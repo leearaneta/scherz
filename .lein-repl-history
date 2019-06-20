@@ -1,0 +1,4 @@
+(use 'overtone.live)
+(envelope [0 0.5 1] [1 1] :step)
+(demo (sin-osc))
+(sorted-set [0 1])
