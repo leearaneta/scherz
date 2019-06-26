@@ -1,5 +1,6 @@
 (ns scherz.rhythm
   (:use [overtone.live]))
+
 ; rhythmic tension
 ; notes played closer together have more tension
 (defn valid-positions [current-position]
