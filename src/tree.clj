@@ -5,6 +5,9 @@
 (refer 'scherz.scale)
 ; let's make some chord progressions
 
+(defn node [value children]
+  {:value value :children children})
+
 (defn neo-riemann [[root shape]]
   (let [new-roots (->> (if (= shape :major) :asc :desc)
                        (fifths root)
@@ -14,14 +17,16 @@
         new-shape (if (= shape :major) :minor :major)]
     (map vector new-roots (repeat 3 new-shape))))
 
+
 (defn reptree [f val]
   {:value val
    :children (map (partial reptree f) (f val))})
 
 (defn prune [n {:keys [value children]}]
-  (if (= n 0) {:value value :children nil}
-      {:value value
-       :children (map (partial prune (dec n)) children)}))
+  (if (= n 0)
+    {:value value :children nil}
+    {:value value
+     :children (map (partial prune (dec n)) children)}))
 
 (prune 3 (reptree neo-riemann [:A :major]))
 
@@ -45,4 +50,7 @@
            cons
            nil))
 
-(depth (prune 5 (reptree neo-riemann [:A :major])))
+(prune 5 (reptree neo-riemann [:A :major]))
+
+; times in which chords are being played should be calculated first
+; when using the lazy tree, decisions should be made based on chord rhythm

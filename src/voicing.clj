@@ -1,4 +1,4 @@
-(ns scherz.chord
+(ns scherz.voicing
   (:use [overtone.live]))
 
 (defn base-chord
@@ -100,6 +100,7 @@
   (zipmap (vals DEGREE) (keys DEGREE)))
 
 (defn chord-set
+  ; TODO: update this to handle multiple note counts
   ([tonic modes] (chord-set tonic modes 3))
   ([tonic modes note-ct]
    (mapcat (fn [mode]
@@ -107,13 +108,7 @@
                   (range 1 8)))
            modes)))
 
-(def chords
-  (chord-set :C [:melodic-minor :lydian-minor] 4))
 
-(defn chord-distances [source-chord target-chords]
-  (map (partial chord-distance source-chord) target-chords))
 
-(chord-distances chord1 chords)
 
-chords
-(chord-distance chord1 '(2 6 8 12))
+
