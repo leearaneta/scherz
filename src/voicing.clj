@@ -27,6 +27,7 @@
                  {:elem (first coll) :min (f (first coll))}
                  (rest coll))))
 
+
 (defn note-distance [current-note target-note]
   (let [diff (- target-note current-note)]
     (min-by #(Math/abs %)
@@ -41,7 +42,6 @@
           {} vecs))
 
 (defn- chord-transition [source-chord target-chord]
-  ; source and target should be compressed
   (if (> (count target-chord) (count source-chord))
     (->> (chord-transition target-chord source-chord)
          (map (fn [[source distance]]
