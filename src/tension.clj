@@ -3,11 +3,13 @@
   (:use [overtone.inst.piano])
   (:require [scherz.rhythm])
   (:require [scherz.consonance])
-  (:require [scherz.voicing]))
+  (:require [scherz.voicing])
+  (:require [scherz.brightness]))
 
 (refer 'scherz.rhythm)
 (refer 'scherz.consonance)
 (refer 'scherz.voicing)
+(refer 'scherz.brightness)
 
 (def subdivisions-per-beat 4)
 (def beats-per-measure 4)
@@ -81,15 +83,15 @@
   [tension-curve positions tonic chord-set]
   (reduce (fn [chords position]
             (let [prev-chord (peek chords)
-                  kt (map (partial key-tension tonic) chord-set)
-                  ct (map euler-gradus chord-set)
-                  dt (delay (->> chord-set
-                                 (map (partial chord-distance prev-chord))
-                                 (map #(if (< 0 % 4) % nil))))
-                  tension-vecs (if prev-chord [kt ct (force dt)] [kt ct])
-                  weights (if prev-chord [1/4 1] [1/4 1 1/2])]
+                  consonance (map chord-consonance chord-set)
+                  distances (when prev-chord
+                              (->> chord-set
+                                   (map (partial chord-distance prev-chord))
+                                   (map #(if (< 0 % 4) 0 nil))))
+                  tension-vecs (if prev-chord [kt rt ct dt] [kt rt ct])
+                  weights (if prev-chord [1/4 1/2 1 1/2] [1/4 1/2 1])]
               (->> (tension-curve position)
-                   (apply-tension tension-vecs chord-set)
+                   (apply-tension tension-vecs weights chord-set)
                    (conj chords))))
           []
           positions))
@@ -101,14 +103,15 @@
                                      (cycle [0]))))
 
 (def chord-tension-curve (vec (take total-subdivisions
-                                    (cycle [0 0.5 1]))))
+                                    (cycle [0 1/4 1/8]))))
 
 (def positions (apply-rhythm-tension rhythm-tension-curve
                                      subdivisions-per-beat
                                      beats-per-measure
                                      total-subdivisions))
 
-positions
+chords
+
 
 (def test-chords (apply-chord-tension chord-tension-curve positions :C chords))
 
@@ -117,7 +120,13 @@ positions
        (map (fn [chord]
               (map #(+ 48 %) chord)))))
 
-(map #(piano %) (nth stuff 8))
+stuff
+(map #(piano %) (nth stuff 7))
+(root-tension :C (nth stuff 2))
+(euler-gradus (nth stuff 2))
 
 ; TODO:
   ; programatically create tension curves
+
+
+

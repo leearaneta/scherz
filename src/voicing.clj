@@ -1,23 +1,19 @@
 (ns scherz.voicing
-  (:use [overtone.live]))
+  (:use [overtone.live])
+  (:require [scherz.brightness]))
 
-(defn base-chord
-  ([degree tonic mode] (base-chord degree tonic mode 3))
-  ([degree tonic mode note-ct]
-   (chord-degree degree
-                 (-> tonic name (str -1) keyword)
-                 mode
-                 note-ct)))
+
+(defn base-chord [tonic mode note-ct degree]
+  (chord-degree (degree->roman degree)
+                (-> tonic name (str -1) keyword)
+                mode
+                note-ct))
 
 (defn compress [notes]
   (distinct (map (fn [x] (mod x 12)) notes)))
 
 (def compressed-chord (comp compress base-chord))
 
-(def chord1 (compressed-chord :i :C :major))
-(def chord2 (compressed-chord :v :C :melodic-minor))
-
-; voice leading stuff
 (defn min-by [f coll]
   (:elem (reduce (fn [acc val]
                    (let [compare (f val)]
@@ -41,20 +37,20 @@
                     :else (conj acc {key [acc-val val]}))))
           {} vecs))
 
-(defn- chord-transition [source-chord target-chord]
-  (if (> (count target-chord) (count source-chord))
-    (->> (chord-transition target-chord source-chord)
+(defn- chord-transition [source-notes target-notes]
+  (if (> (count target-notes) (count source-notes))
+    (->> (chord-transition target-notes source-notes)
          (map (fn [[source distance]]
                 [(mod (+ source distance) 12) (* -1 distance)])))
     (loop [transition {}
-           sources-remaining source-chord
-           targets-remaining target-chord]
+           sources-remaining source-notes
+           targets-remaining target-notes]
       (cond (seq sources-remaining)
             (let [source (first sources-remaining)
                   cost (fn [[_ distance]] (Math/abs distance))
-                  [target distance] (->> target-chord
+                  [target distance] (->> target-notes
                                          (map (partial note-distance source))
-                                         (map vector target-chord)
+                                         (map vector target-notes)
                                          (min-by cost))]
               (recur (conj transition {source distance})
                      (next sources-remaining)
@@ -63,18 +59,18 @@
             (let [target (first targets-remaining)
                   cost (fn [[source distance]]
                          (-> (Math/abs distance) (* 2) (- (transition source))))
-                  [source distance] (->> source-chord
+                  [source distance] (->> source-notes
                                          (map (partial note-distance target))
-                                         (map vector source-chord)
+                                         (map vector source-notes)
                                          (min-by cost))]
               (recur (conj transition {source distance})
                      sources-remaining
                      (next targets-remaining)))
             :else (into [] transition)))))
 
-(defn voice-chord [source-chord target-chord]
-  (let [transition (vecs->map (chord-transition (compress source-chord)
-                                                (compress target-chord)))
+(defn voice-chord [source-notes target-notes]
+  (let [transition (vecs->map (chord-transition (compress source-notes)
+                                                (compress target-notes)))
         voice-note (fn [note]
                     (let [compressed (mod note 12)
                           octaves (-> note (/ 12) (#(Math/floor %)) int)
@@ -83,32 +79,36 @@
                       (if (vector? distance) ; if the note is going to multiple places
                         (map apply-distance distance)
                         (apply-distance distance))))]
-    (flatten (map voice-note source-chord))))
+    (flatten (map voice-note source-notes))))
 
-(defn chord-distance [source-chord target-chord]
+(defn chord-distance [source-notes target-notes]
   (reduce (fn [total [_ distance]]
             (+ total (Math/abs distance)))
-          0 (chord-transition source-chord target-chord)))
+          0 (chord-transition source-notes target-notes)))
 
-(def chord3 (compressed-chord :v :C :major 4))
+(defn pitch-chord [tonic mode note-ct degree]
+  (->> (scherz.brightness/pitch-scale tonic mode)
+       cycle
+       (drop (dec degree))
+       (take-nth 2)
+       (take note-ct)))
 
-(chord-transition chord1 chord3)
-(voice-chord chord1 chord3)
-(chord-distance chord1 chord3)
-
-(def degree
+(def degree->roman
   (zipmap (vals DEGREE) (keys DEGREE)))
 
 (defn chord-set
-  ; TODO: update this to handle multiple note counts
   ([tonic modes] (chord-set tonic modes 3))
   ([tonic modes note-ct]
-   (mapcat (fn [mode]
-             (map #(base-chord (degree %) tonic mode note-ct)
-                  (range 1 8)))
-           modes)))
+   (for [mode modes
+         degree (range 1 8)]
+     {:pitches (pitch-chord tonic mode note-ct degree)
+      :notes (base-chord tonic mode note-ct degree)})))
 
+(chord-set :C [:lydian :melodic-minor] 4)
 
-
-
-
+(defn chord-gravity [source-notes target-notes]
+  (let [transition (chord-transition (compress source-notes)
+                                     (compress target-notes))]
+    (->> (vals transition)
+         (map #(case % -1 2 1 1 :else 0))
+         (reduce +))))

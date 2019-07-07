@@ -1,6 +1,5 @@
 (ns scherz.brightness
   (:use [overtone.live])
-  (:require [scherz.voicing])
   (:require [clojure.string]))
 
 (defn pop-string [s]
@@ -24,15 +23,17 @@
 (def sharpen (partial shift-pitch :asc))
 (def flatten (partial shift-pitch :desc))
 
+(def base-circle ["F" "C" "G" "D" "A" "E" "B"])
+
 (defn fifths
   ([root] (fifths root :asc))
   ([root direction]
    {:pre [(valid-direction? direction)]}
    (let [base-fifths (if (= direction :asc)
-                       ["F" "C" "G" "D" "A" "E" "B"]
-                       ["B" "E" "A" "D" "G" "C" "F"])
+                       [\F \C \G \D \A \E \B]
+                       [\B \E \A \D \G \C \F])
          shift-fn (if (= direction :asc) sharpen flatten)
-         natural-root (subs (name root) 0 1)
+         natural-root (first (name root))
          initial-accidental (subs (name root) 1)
          shift (fn [index value]
                  (->> (/ index 7)
@@ -43,6 +44,8 @@
                     cycle
                     (map-indexed shift)
                     (drop (.indexOf base-fifths natural-root)))))))
+
+(take 10 (fifths :C :desc))
 
 (def base-interval-brightness [0 -5 2 -3 4 -1 0 1 -4 3 -2 5 0])
 
@@ -67,8 +70,6 @@
                          (fifths root :desc))]
      (into upper-arc lower-arc))))
 
-(circle-of-fifths :C :locrian)
-
 (defn pitch-scale [root mode]
   (let [circle (vec (circle-of-fifths root mode))
         root-index (.indexOf circle root)]
@@ -78,13 +79,18 @@
          (mapv circle)
          pop (into [root]))))
 
-(defn chord-brightness [tonic scale chord]
-  ; subtract everything from the chord so that the tonic is 0
-  (let [interval-brightness (if (pos? (scale-brightness scale))
-                              (assoc base-interval-brightness 6 6)
-                              (assoc base-interval-brightness 6 -6))]
-    (->> chord
-         (map #(- % (NOTES tonic)))
-         scherz.voicing/compress
-         (mapv interval-brightness)
-         (reduce +))))
+(defn brightness [pitch]
+  (let [p (name pitch)
+        counts (frequencies p)
+        base-circle [\F \C \G \D \A \E \B]]
+    (+ (.indexOf base-circle (first p))
+       (get counts \# 0)
+       (-' (get counts \b 0)))))
+
+(defn chord-brightness [root scale chord]
+  (let [avg (fn [coll]
+              (/ (reduce + coll) (count coll)))]
+    (->> (pitch-chord root scale chord)
+         (map brightness)
+         avg)))
+

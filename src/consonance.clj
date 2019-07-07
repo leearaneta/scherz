@@ -1,4 +1,4 @@
-(ns scherz.consonance
+(ns scherz.scale
   (:use [overtone.live])
   (:require [scherz.voicing]))
 
@@ -57,7 +57,8 @@
 (defn prime-factors-of [n]
   (factors-starting-at 2 n))
 
-(defn euler-gradus [chord]
+; euler's gradus sauvitatis
+(defn chord-consonance [chord]
   (->> chord
        chord->ratios
        lcm-of-ratios
@@ -65,12 +66,3 @@
        frequencies vec
        (map (fn [[prime exponent]] (* exponent (dec prime))))
        sum inc))
-
-(defn key-tension [tonic chord]
-  (let [tensions [0 5 3 1 1 3 5 0 4 2 2 5]]
-    (->> chord
-         (map #(- % (NOTES tonic)))
-         compress
-         (map tensions)
-         sum)))
-
