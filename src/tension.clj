@@ -49,9 +49,8 @@
    (for [tonic [tonic (second (fifths tonic)) (second (fifths tonic :desc))]
          mode modes
          degree (range 1 8)]
-     {:tonic tonic
-      :mode mode
-      :degree degree
+     {:tonic tonic :mode mode
+      :root ((pitch-scale tonic mode) (dec degree))
       :pitches (pitch-chord tonic mode note-ct degree)
       :notes (base-chord tonic mode note-ct degree)})))
 
@@ -66,23 +65,29 @@
                   color (map #(chord-color (:pitches prev-chord) (:pitches %))
                              chords)]
               (conj chord-progression (apply-tension [consonance gravity color]
-                                                     [3/4 1/2 1]
+                                                     [1 1/2 1]
                                                      chords
                                                      target-tension))))
           [(first (chord-set start-tonic modes 4))]
           tension-curve))
 
-(def tension-curve (vec (take 16 (cycle [0 1/4 1/3 1/2]))))
+(def tension-curve (vec (take 16 (cycle [1/4 1/2 1/4 0]))))
 
-(def stuff (map :notes
-                (apply-chord-tension tension-curve :C [:lydian :melodic-minor])))
+(def stuff (apply-chord-tension tension-curve :C [:lydian :melodic-minor]))
 
-(map piano (nth (map (fn [chord]
-                         (map #(+ % 48) chord))
-                       stuff) 11))
+(def voiced-stuff (reduce (fn [voiced-chords chord]
+                            (conj voiced-chords
+                                  (into [(+ 48 (NOTES (:root chord)))]
+                                        (voice-chord (peek voiced-chords)
+                                                     (:notes chord)))))
+                          [(map #(+ % 60) (:notes (first stuff)))]
+                          (rest stuff)))
+
+(map piano (nth voiced-stuff 9))
+
 
 ; TODO:
-  ; use voicings
+  ; fix voicings
   ; dynamic weights
   ; programatically create weights
   ; create a macro that plays a progression on the beat
