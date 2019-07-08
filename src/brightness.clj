@@ -23,15 +23,15 @@
 (def sharpen (partial shift-pitch :asc))
 (def flatten (partial shift-pitch :desc))
 
-(def base-circle ["F" "C" "G" "D" "A" "E" "B"])
+(def base-circle [\F \C \G \D \A \E \B])
 
 (defn fifths
   ([root] (fifths root :asc))
   ([root direction]
    {:pre [(valid-direction? direction)]}
    (let [base-fifths (if (= direction :asc)
-                       [\F \C \G \D \A \E \B]
-                       [\B \E \A \D \G \C \F])
+                       base-circle
+                       (reverse base-circle))
          shift-fn (if (= direction :asc) sharpen flatten)
          natural-root (first (name root))
          initial-accidental (subs (name root) 1)
@@ -44,8 +44,6 @@
                     cycle
                     (map-indexed shift)
                     (drop (.indexOf base-fifths natural-root)))))))
-
-(take 10 (fifths :C :desc))
 
 (def base-interval-brightness [0 -5 2 -3 4 -1 0 1 -4 3 -2 5 0])
 
@@ -70,27 +68,24 @@
                          (fifths root :desc))]
      (into upper-arc lower-arc))))
 
-(defn pitch-scale [root mode]
-  (let [circle (vec (circle-of-fifths root mode))
-        root-index (.indexOf circle root)]
+(defn pitch-scale [tonic mode]
+  (let [circle (vec (circle-of-fifths tonic mode))
+        root-index (.indexOf circle tonic)]
     (->> (SCALE mode)
          (reductions +)
          (map #(-> % (* 7) (+ root-index) (mod 12)))
          (mapv circle)
-         pop (into [root]))))
+         pop (into [tonic]))))
 
 (defn brightness [pitch]
   (let [p (name pitch)
-        counts (frequencies p)
-        base-circle [\F \C \G \D \A \E \B]]
+        counts (frequencies p)]
     (+ (.indexOf base-circle (first p))
-       (get counts \# 0)
-       (-' (get counts \b 0)))))
+       (* 7 (get counts \# 0))
+       (* -7 (get counts \b 0)))))
 
-(defn chord-brightness [root scale chord]
+(defn chord-brightness [pitches]
   (let [avg (fn [coll]
               (/ (reduce + coll) (count coll)))]
-    (->> (pitch-chord root scale chord)
-         (map brightness)
-         avg)))
+    (avg (map brightness pitches))))
 

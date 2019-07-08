@@ -2,6 +2,8 @@
   (:use [overtone.live])
   (:require [scherz.brightness]))
 
+(def degree->roman
+  (zipmap (vals DEGREE) (keys DEGREE)))
 
 (defn base-chord [tonic mode note-ct degree]
   (chord-degree (degree->roman degree)
@@ -93,22 +95,11 @@
        (take-nth 2)
        (take note-ct)))
 
-(def degree->roman
-  (zipmap (vals DEGREE) (keys DEGREE)))
-
-(defn chord-set
-  ([tonic modes] (chord-set tonic modes 3))
-  ([tonic modes note-ct]
-   (for [mode modes
-         degree (range 1 8)]
-     {:pitches (pitch-chord tonic mode note-ct degree)
-      :notes (base-chord tonic mode note-ct degree)})))
-
-(chord-set :C [:lydian :melodic-minor] 4)
-
 (defn chord-gravity [source-notes target-notes]
   (let [transition (chord-transition (compress source-notes)
-                                     (compress target-notes))]
-    (->> (vals transition)
-         (map #(case % -1 2 1 1 :else 0))
-         (reduce +))))
+                                     (compress target-notes))
+        filtered (filter (fn [[k v]] (not= v 0)) transition)
+        square #(* % %)]
+    (/ (->> (vals filtered) (map square) (reduce +)) ; square all values, add them up
+       (count filtered))))
+

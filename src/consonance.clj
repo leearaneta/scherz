@@ -1,4 +1,4 @@
-(ns scherz.scale
+(ns scherz.consonance
   (:use [overtone.live])
   (:require [scherz.voicing]))
 
