@@ -3,6 +3,7 @@
   (:use [overtone.inst.piano])
   (:require [scherz.consonance])
   (:require [scherz.voicing])
+  (:require [clojure.data.json :as json])
   (:require [scherz.brightness]))
 
 (refer 'scherz.consonance)
@@ -46,7 +47,7 @@
 (defn chord-set
   ([tonic modes] (chord-set tonic modes 4))
   ([tonic modes note-ct]
-   (for [tonic [tonic (second (fifths tonicnn)) (second (fifths tonic :desc))]
+   (for [tonic [tonic (second (fifths tonic)) (second (fifths tonic :desc))]
          mode modes
          degree (range 1 8)]
      {:tonic tonic :mode mode
@@ -71,7 +72,9 @@
           [(first (chord-set start-tonic modes 4))]
           tension-curve))
 
-(def tension-curve (vec (take 15 (cycle [1/4 1/2 1/4 0]))))
+(def tension-curve (vec (take 15 (cycle [1/4 1/2 0]))))
+
+(chord-set :Bbb [:lydian])
 
 (def stuff (apply-chord-tension tension-curve :C [:lydian :melodic-minor]))
 
@@ -87,7 +90,8 @@ stuff
 (map piano (nth voiced-stuff 15))
 
 ; TODO:
-  ; fix voicings
+  ; extend voice leading algorithm to accomodate chords of different sizes
+  ; choose set of possible chords more intelligently
   ; dynamic weights
   ; programatically create weights
   ; create a macro that plays a progression on the beat

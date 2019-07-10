@@ -5,9 +5,19 @@
 (def degree->roman
   (zipmap (vals DEGREE) (keys DEGREE)))
 
+(defn- adjust-tonic [tonic]
+  (if (< 1 (count (name tonic)))
+    (let [tonic (name tonic)
+          multiplier (if (= \# (last tonic)) 1 -1)]
+      (-> tonic count dec
+          (* multiplier)
+          (+ (-> tonic first str keyword NOTES))
+          (mod 12) REVERSE-NOTES))
+    tonic))
+
 (defn base-chord [tonic mode note-ct degree]
   (chord-degree (degree->roman degree)
-                (-> tonic name (str -1) keyword)
+                (-> tonic adjust-tonic name (str -1) keyword)
                 mode
                 note-ct))
 
@@ -44,7 +54,6 @@
     (min-by #(Math/abs %)
             [diff (+ diff 12) (- diff 12)])))
 
-
 ; TODO: allow this to handle chords of different lengths
 ; maybe sort?
 (defn- chord-transition [source-notes target-notes]
@@ -63,11 +72,6 @@
 (defn voice-chord [source-notes target-notes]
   (map (fn [[k v]] (+ k v))
        (chord-transition source-notes target-notes)))
-
-(defn chord-distance [source-notes target-notes]
-  (reduce (fn [total [_ distance]]
-            (+ total (Math/abs distance)))
-          0 (chord-transition source-notes target-notes)))
 
 (defn pitch-chord [tonic mode note-ct degree]
   (->> (scherz.brightness/pitch-scale tonic mode)
