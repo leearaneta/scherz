@@ -46,7 +46,7 @@
 (defn chord-set
   ([tonic modes] (chord-set tonic modes 4))
   ([tonic modes note-ct]
-   (for [tonic [tonic (second (fifths tonic)) (second (fifths tonic :desc))]
+   (for [tonic [tonic (second (fifths tonicnn)) (second (fifths tonic :desc))]
          mode modes
          degree (range 1 8)]
      {:tonic tonic :mode mode
@@ -65,26 +65,26 @@
                   color (map #(chord-color (:pitches prev-chord) (:pitches %))
                              chords)]
               (conj chord-progression (apply-tension [consonance gravity color]
-                                                     [1 1/2 1]
+                                                     [1 1 1]
                                                      chords
                                                      target-tension))))
           [(first (chord-set start-tonic modes 4))]
           tension-curve))
 
-(def tension-curve (vec (take 16 (cycle [1/4 1/2 1/4 0]))))
+(def tension-curve (vec (take 15 (cycle [1/4 1/2 1/4 0]))))
 
 (def stuff (apply-chord-tension tension-curve :C [:lydian :melodic-minor]))
 
+stuff
+
 (def voiced-stuff (reduce (fn [voiced-chords chord]
                             (conj voiced-chords
-                                  (into [(+ 48 (NOTES (:root chord)))]
-                                        (voice-chord (peek voiced-chords)
-                                                     (:notes chord)))))
+                                  (voice-chord (peek voiced-chords)
+                                               (:notes chord))))
                           [(map #(+ % 60) (:notes (first stuff)))]
                           (rest stuff)))
 
-(map piano (nth voiced-stuff 9))
-
+(map piano (nth voiced-stuff 15))
 
 ; TODO:
   ; fix voicings

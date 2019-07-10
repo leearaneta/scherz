@@ -77,15 +77,21 @@
          (mapv circle)
          pop (into [tonic]))))
 
-(defn brightness [pitch]
+(defn pitch-brightness [pitch]
   (let [p (name pitch)
         counts (frequencies p)]
     (+ (.indexOf base-circle (first p))
        (* 7 (get counts \# 0))
        (* -7 (get counts \b 0)))))
 
-(defn chord-brightness [pitches]
-  (let [avg (fn [coll]
-              (/ (reduce + coll) (count coll)))]
-    (avg (map brightness pitches))))
-
+(defn chord-color [source-pitches target-pitches]
+  (let [chord-brightness (fn [pitches]
+                           (map pitch-brightness pitches))
+        brightest-note (fn [pitches] (max (chord-brightness pitches)))
+        darkest-note (fn [pitches] (min (chord-brightness pitches)))
+        brightness-difference (- (brightest-note target-pitches)
+                                 (brightest-note source-pitches))
+        darkness-difference (- (darkest-note source-pitches)
+                               (darkest-note target-pitches))]
+    (+ (apply max brightness-difference 0)
+       (apply max darkness-difference 0))))
