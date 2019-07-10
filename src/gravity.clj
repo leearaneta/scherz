@@ -1,6 +1,5 @@
-(ns scherz.voicing
-  (:use [overtone.live])
-  (:require [scherz.brightness]))
+(ns scherz.gravity
+  (:use [overtone.live]))
 
 (def degree->roman
   (zipmap (vals DEGREE) (keys DEGREE)))
@@ -48,14 +47,12 @@
       (/ (->> filtered (map (fn [[_ v]] (square v))) (reduce +))
          (count filtered)))))
 
-(defn note-distance- [current-note target-note]
+(defn- note-distance [current-note target-note]
   (let [diff (- (mod target-note 12)
                 (mod current-note 12))]
     (min-by #(Math/abs %)
             [diff (+ diff 12) (- diff 12)])))
 
-; TODO: allow this to handle chords of different lengths
-; maybe sort?
 (defn- chord-transition [source-notes target-notes]
   (if (= (sort (compress source-notes)) (sort (compress target-notes)))
     (map vector source-notes (repeat (count source-notes) 0))
@@ -72,10 +69,3 @@
 (defn voice-chord [source-notes target-notes]
   (map (fn [[k v]] (+ k v))
        (chord-transition source-notes target-notes)))
-
-(defn pitch-chord [tonic mode note-ct degree]
-  (->> (scherz.brightness/pitch-scale tonic mode)
-       cycle
-       (drop (dec degree))
-       (take-nth 2)
-       (take note-ct)))

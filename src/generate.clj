@@ -1,13 +1,12 @@
-(ns scherz.tension
+(ns scherz.generate
   (:use [overtone.live])
   (:use [overtone.inst.piano])
   (:require [scherz.consonance])
-  (:require [scherz.voicing])
-  (:require [clojure.data.json :as json])
+  (:require [scherz.gravity])
   (:require [scherz.brightness]))
 
 (refer 'scherz.consonance)
-(refer 'scherz.voicing)
+(refer 'scherz.gravity)
 (refer 'scherz.brightness)
 
 (defn- normalize [coll]
@@ -18,13 +17,13 @@
       (map #(when % 0) coll)
       (map #(when % (/ (- % min-val) (- max-val min-val))) coll))))
 
-(defn apply-tension
+(defn- apply-tension
   ([tension-vecs values target-tension]
    (let [weights (repeat (count tension-vecs) 1)]
      (apply-tension tension-vecs weights values target-tension)))
   
   ([tension-vecs weights values target-tension]
-   {:pre (= (count tension-vecs) (count weights) (count values))}
+   {:pre (= (count tension-vecs) (count weights))}
    (let [apply-weight (fn [weight tension-vec]
                         (map #(when % (* weight %)) tension-vec))
          combine-tensions (fn [& args]
@@ -43,6 +42,22 @@
           (min-by tension-cost) ; choose value that matches with target tension
           first))))
 
+(defn- apply-tensions
+  [tension-vecs values target-tensions]
+  {:pre (= (count tension-vecs) (count target-tensions))}
+  (let [abs #(max % (- %))
+        score (fn [target-tension tension-vec]
+                (map #(when % (abs (- target-tension %))) tension-vec))
+        combine-tensions (fn [& args]
+                            (reduce #(when (and %1 %2) (+ %1 %2)) args))
+        cost (fn [[_ score]]
+               (if (nil? score) Integer/MAX_VALUE score))]
+    (->> tension-vecs
+         (map normalize)
+         (map score target-tensions)
+         (apply map combine-tensions)
+         (map vector values)
+         (min-by cost) first)))
 
 (defn chord-set
   ([tonic modes] (chord-set tonic modes 4))
@@ -55,7 +70,7 @@
       :pitches (pitch-chord tonic mode note-ct degree)
       :notes (base-chord tonic mode note-ct degree)})))
 
-(defn apply-chord-tension
+(defn generate-chords
   [tension-curve start-tonic modes]
   (reduce (fn [chord-progression target-tension]
             (let [prev-chord (peek chord-progression)
@@ -66,19 +81,14 @@
                   color (map #(chord-color (:pitches prev-chord) (:pitches %))
                              chords)]
               (conj chord-progression (apply-tension [consonance gravity color]
-                                                     [1 1 1]
                                                      chords
                                                      target-tension))))
           [(first (chord-set start-tonic modes 4))]
           tension-curve))
 
-(def tension-curve (vec (take 15 (cycle [1/4 1/2 0]))))
+(def tension-curve (vec (take 16 (cycle [1/4 1/2 0]))))
 
-(chord-set :Bbb [:lydian])
-
-(def stuff (apply-chord-tension tension-curve :C [:lydian :melodic-minor]))
-
-stuff
+(def stuff (generate-chords tension-curve :C [:lydian :melodic-minor]))
 
 (def voiced-stuff (reduce (fn [voiced-chords chord]
                             (conj voiced-chords
@@ -92,8 +102,5 @@ stuff
 ; TODO:
   ; extend voice leading algorithm to accomodate chords of different sizes
   ; choose set of possible chords more intelligently
-  ; dynamic weights
-  ; programatically create weights
   ; create a macro that plays a progression on the beat
-  ; add some sick beats
-
+  ; programatically create tension curves

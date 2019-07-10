@@ -75,7 +75,15 @@
          (reductions +)
          (map #(-> % (* 7) (+ root-index) (mod 12)))
          (mapv circle)
-         pop (into [tonic]))))
+         pop
+         (into [tonic]))))
+
+(defn pitch-chord [tonic mode note-ct degree]
+  (->> (pitch-scale tonic mode)
+       cycle
+       (drop (dec degree))
+       (take-nth 2)
+       (take note-ct)))
 
 (defn pitch-brightness [pitch]
   (let [p (name pitch)
@@ -87,11 +95,13 @@
 (defn chord-color [source-pitches target-pitches]
   (let [chord-brightness (fn [pitches]
                            (map pitch-brightness pitches))
-        brightest-note (fn [pitches] (max (chord-brightness pitches)))
-        darkest-note (fn [pitches] (min (chord-brightness pitches)))
+        brightest-note (fn [pitches]
+                         (apply max (chord-brightness pitches)))
+        darkest-note (fn [pitches]
+                       (apply min (chord-brightness pitches)))
         brightness-difference (- (brightest-note target-pitches)
                                  (brightest-note source-pitches))
         darkness-difference (- (darkest-note source-pitches)
                                (darkest-note target-pitches))]
-    (+ (apply max brightness-difference 0)
-       (apply max darkness-difference 0))))
+    (+ (max brightness-difference 0)
+       (max darkness-difference 0))))

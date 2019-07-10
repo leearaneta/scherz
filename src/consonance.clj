@@ -1,8 +1,5 @@
 (ns scherz.consonance
-  (:use [overtone.live])
-  (:require [scherz.voicing]))
-
-(refer 'scherz.voicing)
+  (:use [overtone.live]))
 
 (def freq-ratios
   (let [base-ratios [25/24 9/8 6/5 5/4 4/3 45/32 3/2 8/5 5/3 9/5 15/8 2/1]
@@ -10,31 +7,32 @@
                       (->> (/ i 12)
                            (#(Math/floor %))
                            (#(Math/pow 2 %))
-                           int (* v)))]
+                           int
+                           (* v)))]
     (->> (cycle base-ratios)
          (take (* (count base-ratios) 8))
          (map-indexed add-octaves)
          vec)))
 
-(defn chord->ratios [chord]
+(defn- chord->ratios [notes]
   (map (fn [note]
-         (->> (first chord)
+         (->> (first notes)
               (- note)
               dec
               freq-ratios))
-       (rest chord)))
+       (rest notes)))
 
-(defn gcd [a b]
+(defn- gcd [a b]
   (if (zero? b)
     a
     (recur b, (mod a b))))
  
-(defn lcm [a b]
+(defn- lcm [a b]
   (/ (* a b) (gcd a b)))
 
-(defn lcmv [& v] (reduce lcm v))
+(defn- lcmv [& v] (reduce lcm v))
 
-(defn lcm-of-ratios [ratios]
+(defn- lcm-of-ratios [ratios]
   (let [denominator #(if (ratio? %) (denominator %) 1)
         numerator #(if (ratio? %) (numerator %) %)
         multiple (apply lcmv (map denominator ratios))
@@ -58,11 +56,12 @@
   (factors-starting-at 2 n))
 
 ; euler's gradus sauvitatis
-(defn chord-consonance [chord]
-  (->> chord
-       chord->ratios
+(defn chord-consonance [notes]
+  (->> (chord->ratios notes)
        lcm-of-ratios
        prime-factors-of
-       frequencies vec
+       frequencies
        (map (fn [[prime exponent]] (* exponent (dec prime))))
        sum inc))
+
+(chord-consonance '(0 4 7 11))
