@@ -64,4 +64,3 @@
        (map (fn [[prime exponent]] (* exponent (dec prime))))
        sum inc))
 
-(chord-consonance '(0 4 7 11))
