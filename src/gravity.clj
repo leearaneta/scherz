@@ -4,24 +4,24 @@
 (def degree->roman
   (zipmap (vals DEGREE) (keys DEGREE)))
 
-(defn- adjust-tonic [tonic]
-  (if (< 1 (count (name tonic)))
-    (let [tonic (name tonic)
-          multiplier (if (= \# (last tonic)) 1 -1)]
-      (-> tonic count dec
+(defn adjust-pitch [pitch]
+  (if (< 1 (count (name pitch)))
+    (let [pitch (name pitch)
+          multiplier (if (= \# (last pitch)) 1 -1)]
+      (-> pitch count dec
           (* multiplier)
-          (+ (-> tonic first str keyword NOTES))
+          (+ (-> pitch first str keyword NOTES))
           (mod 12) REVERSE-NOTES))
-    tonic))
+    pitch))
 
 (defn base-chord [tonic mode note-ct degree]
   (chord-degree (degree->roman degree)
-                (-> tonic adjust-tonic name (str -1) keyword)
+                (-> tonic adjust-pitch name (str -1) keyword)
                 mode
                 note-ct))
 
 (defn compress [notes]
-  (distinct (map (fn [x] (mod x 12)) notes)))
+  (sort (map (fn [x] (mod x 12)) notes)))
 
 (def compressed-chord (comp compress base-chord))
 
@@ -54,7 +54,7 @@
             [diff (+ diff 12) (- diff 12)])))
 
 (defn- chord-transition [source-notes target-notes]
-  (if (= (sort (compress source-notes)) (sort (compress target-notes)))
+  (if (= (compress source-notes) (compress target-notes))
     (map vector source-notes (repeat (count source-notes) 0))
     (->> (range 0 (count target-notes))
          (map (partial rotate-chord target-notes))
@@ -64,8 +64,15 @@
                 (map vector source-notes distances)))
          (min-by gravity))))
 
+
 (def chord-gravity (comp gravity chord-transition))
 
-(defn voice-chord [source-notes target-notes]
-  (map (fn [[k v]] (+ k v))
-       (chord-transition source-notes target-notes)))
+(defn voice-lead [source-notes target-notes]
+  (let [transition (chord-transition (compress source-notes)
+                                     (compress target-notes))
+        mapping (reduce (fn [acc curr]
+                          (conj acc {(mod curr 12) curr}))
+                        {} source-notes)]
+    (sort (map (fn [[k v]]
+                 (+ v (mapping k)))
+               transition))))

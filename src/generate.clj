@@ -89,16 +89,36 @@
           [(first (chord-set start-tonic modes 4))]
           tension-curve))
 
-(def tension-curve (vec (take 16 (cycle [1/3 2/3 1 0]))))
+(defn- invert-asc [notes]
+  (sort (cons (+ (first notes) 12)
+              (next notes))))
 
-(def progression (generate-chords tension-curve :C [:lydian :melodic-minor]))
+(defn- invert-desc [notes]
+  (sort (cons (- (last notes) 12)
+              (next (reverse notes)))))
 
-(def voiced-progression (reduce (fn [voiced-chords chord]
-                                  (conj voiced-chords
-                                        (voice-chord (peek voiced-chords)
-                                                     (:notes chord))))
-                                [(map #(+ % 60) (:notes (first stuff)))]
-                                (rest stuff)))
+
+(defn invert-voicing [notes shift]
+  (cond
+    (pos? shift) (recur (invert-asc notes) (dec shift))
+    (neg? shift) (recur (invert-desc notes) (inc shift))
+    (zero? shift) notes))
+
+(defn voice-progression [progression]
+  (let [adjust-voicing (fn [notes]
+                         (cond (< (apply min notes) 60) (invert-voicing notes 1)
+                               (< 78 (apply max notes)) (invert-voicing notes -1)
+                               :else notes))
+        initial-chord (:notes (first progression))
+        initial-voicing (->> initial-chord second (+ 12)
+                             (assoc (vec initial-chord) 1)
+                             (map (partial + 60)) sort)]
+    (reduce (fn [voiced-progression chord]
+              (conj voiced-progression
+                    (sort (adjust-voicing (voice-lead (peek voiced-progression)
+                                                      (:notes chord))))))
+            [initial-voicing]
+            (rest progression))))
 
 (defn play-chord [notes]
   (doseq [note notes]
@@ -109,6 +129,12 @@
                         (map vector chords))]
     (doseq [[notes time] chord-time]
       (at time (play-chord notes)))))
+
+(def tension-curve (vec (take 18 (cycle [1/2 1 0]))))
+
+(def progression (generate-chords tension-curve :C [:lydian :melodic-minor]))
+
+(play-progression (voice-progression progression))
 
 ; TODO:
   ; extend voice leading algorithm to accomodate chords of different sizes
