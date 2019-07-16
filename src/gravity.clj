@@ -1,38 +1,7 @@
 (ns scherz.gravity
-  (:use [overtone.live]))
+  (:require [scherz.util]))
 
-(def degree->roman
-  (zipmap (vals DEGREE) (keys DEGREE)))
-
-(defn adjust-pitch [pitch]
-  (if (< 1 (count (name pitch)))
-    (let [pitch (name pitch)
-          multiplier (if (= \# (last pitch)) 1 -1)]
-      (-> pitch count dec
-          (* multiplier)
-          (+ (-> pitch first str keyword NOTES))
-          (mod 12) REVERSE-NOTES))
-    pitch))
-
-(defn base-chord [tonic mode note-ct degree]
-  (chord-degree (degree->roman degree)
-                (-> tonic adjust-pitch name (str -1) keyword)
-                mode
-                note-ct))
-
-(defn compress [notes]
-  (sort (map (fn [x] (mod x 12)) notes)))
-
-(def compressed-chord (comp compress base-chord))
-
-(defn min-by [f coll]
-  (:elem (reduce (fn [acc val]
-                   (let [compare (f val)]
-                     (if (< compare (:min acc))
-                       {:elem val :min compare}
-                       acc)))
-                 {:elem (first coll) :min (f (first coll))}
-                 (rest coll))))
+(refer 'scherz.util)
 
 (defn- rotate-chord
   ([notes] (rotate-chord notes 1))
@@ -50,8 +19,7 @@
 (defn- note-distance [current-note target-note]
   (let [diff (- (mod target-note 12)
                 (mod current-note 12))]
-    (min-by #(Math/abs %)
-            [diff (+ diff 12) (- diff 12)])))
+    (min-by absv [diff (+ diff 12) (- diff 12)])))
 
 (defn- chord-transition [source-notes target-notes]
   (if (= (compress source-notes) (compress target-notes))
@@ -75,17 +43,3 @@
     (sort (map (fn [[k v]]
                  (+ v (mapping k)))
                transition))))
-
-(defn- invert-asc [notes]
-  (sort (cons (+ (first notes) 12)
-              (next notes))))
-
-(defn- invert-desc [notes]
-  (sort (cons (- (last notes) 12)
-              (next (reverse notes)))))
-
-(defn invert-voicing [notes shift]
-  (cond
-    (pos? shift) (recur (invert-asc notes) (dec shift))
-    (neg? shift) (recur (invert-desc notes) (inc shift))
-    (zero? shift) notes))

@@ -1,6 +1,7 @@
 (ns scherz.brightness
-  (:use [overtone.live])
-  (:require [clojure.string]))
+  (:require [overtone.live])
+  (:require [clojure.string])
+  (:require [scherz.util]))
 
 (defn pop-string [s]
   (subs s 0 (- (count s) 1)))
@@ -47,8 +48,8 @@
 
 (def base-interval-brightness [0 -5 2 -3 4 -1 0 1 -4 3 -2 5 0])
 
-(defn scale-brightness [mode]
-  (let [cumulative-intervals (reductions + (SCALE mode))
+(defn mode-brightness [mode]
+  (let [cumulative-intervals (reductions + (overtone.live/SCALE mode))
         base-brightness (reduce (fn [acc interval]
                                   (+ acc (base-interval-brightness interval)))
                                 0 cumulative-intervals)]
@@ -61,7 +62,7 @@
 (defn circle-of-fifths
   ([root] (circle-of-fifths root :major))
   ([root mode]
-   (let [bright? (pos? (scale-brightness mode))
+   (let [bright? (pos? (mode-brightness mode))
          upper-arc (take (if bright? 6 5)
                          (drop 1 (fifths root)))
          lower-arc (take (if bright? 6 7)
@@ -71,7 +72,7 @@
 (defn pitch-scale [tonic mode]
   (let [circle (vec (circle-of-fifths tonic mode))
         root-index (.indexOf circle tonic)]
-    (->> (SCALE mode)
+    (->> (overtone.live/SCALE mode)
          (reductions +)
          (map #(-> % (* 7) (+ root-index) (mod 12)))
          (mapv circle)
@@ -91,6 +92,10 @@
     (+ (.indexOf base-circle (first p))
        (* 7 (get counts \# 0))
        (* -7 (get counts \b 0)))))
+
+(defn scale-brightness [tonic mode]
+  (scherz.util/avg (map pitch-brightness
+                        (pitch-scale tonic mode))))
 
 (defn chord-color [source-pitches target-pitches]
   (let [chord-brightness (fn [pitches]

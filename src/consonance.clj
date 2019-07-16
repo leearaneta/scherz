@@ -1,5 +1,7 @@
 (ns scherz.consonance
-  (:use [overtone.live]))
+  (:require [scherz.util]))
+
+(refer 'scherz.util)
 
 (def freq-ratios
   (let [base-ratios [25/24 9/8 6/5 5/4 4/3 45/32 3/2 8/5 5/3 9/5 15/8 2/1]
@@ -21,16 +23,6 @@
               dec
               freq-ratios))
        (rest notes)))
-
-(defn- gcd [a b]
-  (if (zero? b)
-    a
-    (recur b, (mod a b))))
- 
-(defn- lcm [a b]
-  (/ (* a b) (gcd a b)))
-
-(defn- lcmv [& v] (reduce lcm v))
 
 (defn- lcm-of-ratios [ratios]
   (let [denominator #(if (ratio? %) (denominator %) 1)
@@ -62,5 +54,5 @@
        prime-factors-of
        frequencies
        (map (fn [[prime exponent]] (* exponent (dec prime))))
-       sum inc))
+       (reduce +) inc))
 
