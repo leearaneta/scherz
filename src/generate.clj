@@ -17,7 +17,9 @@
   (let [cleaned (filter some? coll)
         max-val (apply max cleaned)
         min-val (apply min cleaned)]
-    (map (fwhen [v] (/ (- v min-val) (- max-val min-val))) coll)))
+    (if (= max-val min-val)
+      coll
+      (map (fwhen [v] (/ (- v min-val) (- max-val min-val))) coll))))
 
 (defn- apply-tension
   ([tension-vecs values target-tension]
@@ -63,20 +65,40 @@
          first)))
 
 (defn chord-set
-  ([tonic modes] (chord-set tonic modes 4))
-  ([tonic modes note-ct]
-   (for [tonic [tonic (second (fifths tonic)) (second (fifths tonic :desc))]
-         mode modes
-         degree (range 1 8)]
-     {:tonic tonic :mode mode
-      :root ((pitch-scale tonic mode) (dec degree))
-      :pitches (pitch-chord tonic mode note-ct degree)
-      :notes (base-chord tonic mode note-ct degree)})))
+  ([tonic mode] (chord-set tonic mode 4))
+  ([tonic mode note-ct]
+   (map (fn [degree]
+          {:tonic tonic :mode mode
+           :root ((pitch-scale tonic mode) (dec degree))
+           :pitches (pitch-chord tonic mode note-ct degree)
+           :notes (base-chord tonic mode note-ct degree)})
+        (range 1 8))))
+
+(let [prev-chord {:notes '(0 4 7 11) :pitches '(:C :E :G :B)}
+      modes [:lydian :melodic-minor]
+      avg (fn [coll] (/ (reduce + coll) (count coll)))
+      target-color 0]
+  (->> (interleave (fifths :C :asc) (fifths :C :desc))
+       (drop 1)
+       (mapcat (fn [tonic] (map (partial chord-set tonic) modes)))
+       (filter (fn [chords]
+                 (< (- target-color 0.5)
+                    (avg (map (partial chord-color (:pitches prev-chord))
+                              (map :pitches chords)))
+                    (+ target-color 0.5))))
+       first))
+
+(chord-brightness '(:C :E :G :B))
+(scale-brightness :C :major)
+(map (partial chord-color '(:C :E :G :B))
+     (map :pitches (chord-set :C :major)))
 
 (defn generate-chords
   [tension-curve start-tonic modes]
   (reduce (fn [chord-progression target-tension]
             (let [prev-chord (peek chord-progression)
+                  ; based on the previous tonic and target brightness,
+                    ; find a set of chords
                   chords (chord-set (:tonic prev-chord) modes)
                   consonance (map #(chord-consonance (:notes %)) chords)
                   gravity (map #(chord-gravity (:notes prev-chord) (:notes %))
@@ -84,6 +106,7 @@
                   color (map #(chord-color (:pitches prev-chord) (:pitches %))
                              chords)]
               (conj chord-progression (apply-tension [consonance gravity color]
+                                                     [1 1 1]
                                                      chords
                                                      target-tension))))
           [(first (chord-set start-tonic modes 4))]
@@ -97,7 +120,6 @@
   (sort (cons (- (last notes) 12)
               (next (reverse notes)))))
 
-
 (defn invert-voicing [notes shift]
   (cond
     (pos? shift) (recur (invert-asc notes) (dec shift))
@@ -110,7 +132,7 @@
                                (< 78 (apply max notes)) (invert-voicing notes -1)
                                :else notes))
         initial-chord (:notes (first progression))
-        initial-voicing (->> initial-chord second (+ 12)
+        initial-voicing (->> (second initial-chord) (+ 12)
                              (assoc (vec initial-chord) 1)
                              (map (partial + 60)) sort)]
     (reduce (fn [voiced-progression chord]
@@ -130,13 +152,22 @@
     (doseq [[notes time] chord-time]
       (at time (play-chord notes)))))
 
-(def tension-curve (vec (take 18 (cycle [1/2 1 0]))))
+(def tension-curve (vec (take 16 (cycle [1/4 1/2 3/4 1 0]))))
 
 (def progression (generate-chords tension-curve :C [:lydian :melodic-minor]))
+
+progression
 
 (play-progression (voice-progression progression))
 
 ; TODO:
+  ; redefine gravity
   ; extend voice leading algorithm to accomodate chords of different sizes
-  ; choose set of possible chords more intelligently
+  ; choose set of possible chords more intelligently based on color
+    ; global color can determine what scale to choose from
+    ; maybe omit local color to make things simpler
   ; programatically create tension curves
+  ; given a scale and some midi notes, convert all notes to pitches
+  ; port to cljs
+
+(chord-set :)

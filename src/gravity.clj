@@ -64,7 +64,6 @@
                 (map vector source-notes distances)))
          (min-by gravity))))
 
-
 (def chord-gravity (comp gravity chord-transition))
 
 (defn voice-lead [source-notes target-notes]
@@ -76,3 +75,17 @@
     (sort (map (fn [[k v]]
                  (+ v (mapping k)))
                transition))))
+
+(defn- invert-asc [notes]
+  (sort (cons (+ (first notes) 12)
+              (next notes))))
+
+(defn- invert-desc [notes]
+  (sort (cons (- (last notes) 12)
+              (next (reverse notes)))))
+
+(defn invert-voicing [notes shift]
+  (cond
+    (pos? shift) (recur (invert-asc notes) (dec shift))
+    (neg? shift) (recur (invert-desc notes) (inc shift))
+    (zero? shift) notes))
