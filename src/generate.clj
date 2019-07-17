@@ -53,11 +53,11 @@
                      (fifths tonic :desc))
          (drop 1)
          (mapcat (fn [tonic] (map (partial chord-set tonic) modes)))
-         (take (* 10 (count modes)))
+         (take (* 10 (count modes))) ; this is a lot
          (min-by (fn [chords]
                    (abs-diff target-color (scale-color chords)))))))
 
-(defn generate-chords
+(defn generate-progression
   [{:keys [color consonance gravity]} modes start-tonic]
   (reduce (fn [chord-progression position]
             (let [target-color (* 5 (color position))
@@ -66,7 +66,7 @@
                   color-t (map (fn [chord]
                                  (->> (:pitches chord)
                                       (chord-color (:pitches prev-chord))
-                                      (- target-color) absv))
+                                      (abs-diff target-color)))
                                chords)
                   consonance-t (map #(chord-consonance (:notes %)) chords)
                   gravity-t (map #(chord-gravity (:notes prev-chord) (:notes %))
@@ -78,10 +78,26 @@
           [(first (chord-set start-tonic (first modes) 4))]
           (range 0 (count color))))
 
+(defn voice-progression [progression]
+  (let [adjust-voicing (fn [notes]
+                         (cond (< (apply min notes) 60) (invert-voicing notes 1)
+                               (< 78 (apply max notes)) (invert-voicing notes -1)
+                               :else notes))
+        initial-chord (:notes (first progression))
+        initial-voicing (->> (second initial-chord) (+ 12)
+                             (assoc (vec initial-chord) 1)
+                             (map (partial + 60)) sort)]
+    (reduce (fn [voiced-progression chord]
+              (conj voiced-progression
+                    (-> (peek voiced-progression)
+                        (voice-lead (:notes chord))
+                        adjust-voicing sort)))
+            [initial-voicing]
+            (rest progression))))
+
 ; TODO:
   ; redefine gravity to prioritize half step transitions
   ; extend voice leading algorithm to accomodate chords of different sizes
   ; programatically create tension curves
   ; given a scale and some midi notes, convert all notes to pitches
   ; port to cljs
-

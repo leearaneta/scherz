@@ -24,6 +24,16 @@
               freq-ratios))
        (rest notes)))
 
+(defn- gcd [a b]
+  (if (zero? b)
+    a
+    (recur b, (mod a b))))
+ 
+(defn- lcm [a b]
+  (/ (* a b) (gcd a b)))
+
+(defn- lcmv [& v] (reduce lcm v))
+
 (defn- lcm-of-ratios [ratios]
   (let [denominator #(if (ratio? %) (denominator %) 1)
         numerator #(if (ratio? %) (numerator %) %)
@@ -55,4 +65,3 @@
        frequencies
        (map (fn [[prime exponent]] (* exponent (dec prime))))
        (reduce +) inc))
-

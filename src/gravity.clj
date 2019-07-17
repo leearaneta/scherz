@@ -3,6 +3,9 @@
 
 (refer 'scherz.util)
 
+(defn- compress [notes]
+  (sort (map (fn [x] (mod x 12)) notes)))
+
 (defn- rotate-chord
   ([notes] (rotate-chord notes 1))
   ([notes offset] (->> (cycle notes)
@@ -19,7 +22,7 @@
 (defn- note-distance [current-note target-note]
   (let [diff (- (mod target-note 12)
                 (mod current-note 12))]
-    (min-by absv [diff (+ diff 12) (- diff 12)])))
+    (min-by abs [diff (+ diff 12) (- diff 12)])))
 
 (defn- chord-transition [source-notes target-notes]
   (if (= (compress source-notes) (compress target-notes))
@@ -43,3 +46,17 @@
     (sort (map (fn [[k v]]
                  (+ v (mapping k)))
                transition))))
+
+(defn- invert-asc [notes]
+  (sort (cons (+ (first notes) 12)
+              (next notes))))
+
+(defn- invert-desc [notes]
+  (sort (cons (- (last notes) 12)
+              (next (reverse notes)))))
+
+(defn invert-voicing [notes shift]
+  (cond
+    (pos? shift) (recur (invert-asc notes) (dec shift))
+    (neg? shift) (recur (invert-desc notes) (inc shift))
+    (zero? shift) notes))
