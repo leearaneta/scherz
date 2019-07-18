@@ -34,28 +34,37 @@
          (min-by cost)
          first)))
 
-(defn chord-set
-  ([tonic scale] (chord-set tonic scale 4))
-  ([tonic scale note-ct]
-   (map (fn [degree]
-          {:tonic tonic :mode scale
-           :root ((pitch-scale tonic scale) (dec degree))
-           :pitches (pitch-chord tonic scale note-ct degree)
-           :notes (base-chord tonic scale note-ct degree)})
-        (range 1 8))))
+(defn chord-set [tonic scale]
+  (let [chord-shapes
+        {6 [[0 2 4 7]]
+         7 [[0 2 4 7] [0 2 4 6] [0 1 4 6] [0 3 4 6]]
+         8 [[0 2 4 6] [0 2 4 7]]}]
+    (for [shape (-> (scales scale) count chord-shapes)
+          degree (range 1 8)]
+      {:tonic tonic :scale scale
+       :root ((pitch-scale tonic scale) (dec degree))
+       :pitches (pitch-chord tonic scale shape degree)
+       :notes (base-chord tonic scale shape degree)})))
 
 (defn- find-chord-set
-  [scales {:keys [tonic pitches]} target-color]
-  (let [scale-color (fn [chords]
-                      (avg (map (partial chord-color pitches)
-                                (map :pitches chords))))]
+  [scales {:keys [tonic scale]} target-color]
+  (let [scale-brightness (fn [tonic scale]
+                           (->> (count (scherz.util/scales scale))
+                                (/ (scale-brightness scale))
+                                (+ (pitch-brightness tonic))))]
     (->> (interleave (fifths tonic :asc)
                      (fifths tonic :desc))
          (drop 1)
-         (mapcat (fn [tonic] (map (partial chord-set tonic) scales)))
-         (take (* 2 (inc target-color) (count scales))) ; this is a lot
-         (min-by (fn [chords]
-                   (abs-diff target-color (scale-color chords)))))))
+         (mapcat (fn [tonic] (map (partial vector tonic) scales)))
+         (filter #(<= (- target-color 0.5)
+                      (abs-diff (apply scale-brightness %)
+                                (scale-brightness tonic scale))
+                      (+ target-color 0.5)))
+         first
+         (apply chord-set))))
+
+(scale-brightness :lydian)
+(scale-brightness :diminished)
 
 (defn generate-progression
   ([tensions scales] (generate-progression tensions scales :C))
@@ -76,7 +85,7 @@
                      (apply-tensions [color-t consonance-t gravity-t]
                                      [0 (consonance position) (gravity position)]
                                      chords))))
-           [(first (chord-set start-tonic (first scales) 4))]
+           [(first (chord-set start-tonic (first scales)))]
            (range 0 (count color)))))
 
 (defn voice-progression [progression]

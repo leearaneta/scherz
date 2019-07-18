@@ -43,18 +43,17 @@
                     (map-indexed shift)
                     (drop (.indexOf base-fifths natural-root)))))))
 
-(def base-interval-brightness [0 -5 2 -3 4 -1 0 1 -4 3 -2 5 0])
-
-(defn- scale-brightness [scale]
+(defn scale-brightness [scale]
   (let [cumulative-intervals (reductions + (scherz.util/scales scale))
-        base-brightness (reduce (fn [acc interval]
-                                  (+ acc (base-interval-brightness interval)))
-                                0 cumulative-intervals)]
+        base-interval-brightness [0 -5 2 -3 4 -1 0 1 -4 3 -2 5 0]
+        scale-brightness (reduce (fn [acc interval]
+                                   (+ acc (base-interval-brightness interval)))
+                                 0 cumulative-intervals)]
     (if (some #(= 6 %) cumulative-intervals)
-      (if (pos? base-brightness)
-        (+ base-brightness 6)
-        (- base-brightness 6))
-      base-brightness)))
+      (if (pos? scale-brightness)
+        (+ scale-brightness 6)
+        (- scale-brightness 6))
+      scale-brightness)))
 
 (defn circle-of-fifths
   ([root] (circle-of-fifths root :major))
@@ -68,20 +67,21 @@
 
 (defn pitch-scale [tonic scale]
   (let [circle (vec (circle-of-fifths tonic scale))
-        root-index (.indexOf circle tonic)]
-    (->> (scherz.util/scales scale)
+        root-index (.indexOf circle tonic)
+        intervals (scherz.util/scales scale)]
+    (->> intervals
          (reductions +)
          (map #(-> % (* 7) (+ root-index) (mod 12)))
          (mapv circle)
          pop
          (into [tonic]))))
 
-(defn pitch-chord [tonic scale note-ct degree]
+(defn pitch-chord [tonic scale chord-shape degree]
   (->> (pitch-scale tonic scale)
        cycle
        (drop (dec degree))
-       (take-nth 2)
-       (take note-ct)))
+       (take (inc (last chord-shape)))
+       (#(map (vec %) chord-shape))))
 
 (defn pitch-brightness [pitch]
   (let [p (name pitch)

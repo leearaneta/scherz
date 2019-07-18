@@ -34,8 +34,9 @@
 
 (defn- chord-transition [source-notes target-notes]
   (if (= (compress source-notes) (compress target-notes))
-    (map vector source-notes (repeat (count source-notes) 0))
-    (->> (range 0 (count target-notes))
+    (map vector source-notes (repeat 4 0))
+
+    (->> (range 0 4) ; all chords currently should have four notes
          (map (partial invert target-notes))
          (map (fn [rotation]
                 (map note-distance source-notes rotation)))
@@ -61,3 +62,6 @@
     (if (-> (first notes) (mod 12) (= root))
       inversion
       (recur (invert-desc notes) (inc inversion)))))
+
+
+; TODO: add measure of bass contour

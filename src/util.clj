@@ -42,7 +42,8 @@
      :melodic-major      [2 2 1 2 1 2 2]
      :lydian-minor       [2 2 2 1 1 2 2]
      :diminished         [1 2 1 2 1 2 1 2]
-     :diminished2        [2 1 2 1 2 1 2 1]}))
+     :diminished2        [2 1 2 1 2 1 2 1]
+     :augmented          [2 2 2 2 2 2]}))
 
 (def chords
   {:M7     #{0 4 7 11}
@@ -64,12 +65,12 @@
         (+ (notes (first pitch)))
         (mod 12))))
 
-(defn base-chord [tonic scale note-ct degree]
+(defn base-chord [tonic scale chord-shape degree]
   (->> (cycle (scales scale))
        (reductions + (pitch->midi tonic))
        (drop (dec degree))
-       (take-nth 2)
-       (take note-ct)))
+       (take (inc (last chord-shape)))
+       (#(map (vec %) chord-shape))))
 
 (defn min-by [f coll]
   (loop [elem nil

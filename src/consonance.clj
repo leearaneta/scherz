@@ -57,7 +57,7 @@
 (defn prime-factors-of [n]
   (factors-starting-at 2 n))
 
-; euler's gradus sauvitatis
+; euler's gradus suavitatis
 (defn chord-consonance [notes]
   (->> (chord->ratios notes)
        lcm-of-ratios
@@ -65,3 +65,4 @@
        frequencies
        (map (fn [[prime exponent]] (* exponent (dec prime))))
        (reduce +) inc))
+
