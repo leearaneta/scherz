@@ -13,11 +13,13 @@
 
 (def abs-diff (comp abs -))
 
-(def modes
-  (let [ionian-sequence     [2 2 1 2 2 2 1]
-        rotate (fn [scale-sequence offset]
-                 (take (count scale-sequence)
-                       (drop offset (cycle scale-sequence))))]
+(defn rotate [coll offset]
+  (->> (cycle coll)
+       (drop offset)
+       (take (count coll))))
+
+(def scales
+  (let [ionian-sequence  [2 2 1 2 2 2 1]]
     {:diatonic           ionian-sequence
      :ionian             (rotate ionian-sequence 0)
      :major              (rotate ionian-sequence 0)
@@ -38,7 +40,20 @@
      :melodic-minor-desc [2 1 2 2 1 2 2]
      :melodic-minor      [2 1 2 2 2 2 1]
      :melodic-major      [2 2 1 2 1 2 2]
-     :lydian-minor       [2 2 2 1 1 2 2]}))
+     :lydian-minor       [2 2 2 1 1 2 2]
+     :diminished         [1 2 1 2 1 2 1 2]
+     :diminished2        [2 1 2 1 2 1 2 1]}))
+
+(def chords
+  {:M7     #{0 4 7 11}
+   :D7     #{0 4 7 10}
+   :m7     #{0 3 7 10}
+   :d7     #{0 3 6 9}
+   :mM7    #{0 3 7 11}
+   :dM7    #{0 3 6 11}
+   :7sus2  #{0 2 7 10}
+   :7sus4  #{0 5 7 10}
+   :m7-5   #{0 3 6 10}})
 
 (defn pitch->midi [pitch]
   (let [pitch (name pitch)
@@ -49,8 +64,8 @@
         (+ (notes (first pitch)))
         (mod 12))))
 
-(defn base-chord [tonic mode note-ct degree]
-  (->> (cycle (modes mode))
+(defn base-chord [tonic scale note-ct degree]
+  (->> (cycle (scales scale))
        (reductions + (pitch->midi tonic))
        (drop (dec degree))
        (take-nth 2)

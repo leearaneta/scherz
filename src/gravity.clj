@@ -6,11 +6,19 @@
 (defn- compress [notes]
   (sort (map (fn [x] (mod x 12)) notes)))
 
-(defn- rotate-chord
-  ([notes] (rotate-chord notes 1))
-  ([notes offset] (->> (cycle notes)
-                       (drop offset)
-                       (take (count notes)))))
+(defn- invert-asc [notes]
+  (sort (cons (+ (first notes) 12)
+              (next notes))))
+
+(defn- invert-desc [notes]
+  (sort (cons (- (last notes) 12)
+              (next (reverse notes)))))
+
+(defn invert [notes shift]
+  (cond
+    (pos? shift) (recur (invert-asc notes) (dec shift))
+    (neg? shift) (recur (invert-desc notes) (inc shift))
+    (zero? shift) notes))
 
 (defn- gravity [transition]
   (let [filtered (filter (fn [[_ v]] (not= v 0)) transition)
@@ -28,7 +36,7 @@
   (if (= (compress source-notes) (compress target-notes))
     (map vector source-notes (repeat (count source-notes) 0))
     (->> (range 0 (count target-notes))
-         (map (partial rotate-chord target-notes))
+         (map (partial invert target-notes))
          (map (fn [rotation]
                 (map note-distance source-notes rotation)))
          (map (fn [distances]
@@ -47,16 +55,9 @@
                  (+ v (mapping k)))
                transition))))
 
-(defn- invert-asc [notes]
-  (sort (cons (+ (first notes) 12)
-              (next notes))))
-
-(defn- invert-desc [notes]
-  (sort (cons (- (last notes) 12)
-              (next (reverse notes)))))
-
-(defn invert-voicing [notes shift]
-  (cond
-    (pos? shift) (recur (invert-asc notes) (dec shift))
-    (neg? shift) (recur (invert-desc notes) (inc shift))
-    (zero? shift) notes))
+(defn inversion [root notes]
+  (loop [notes notes
+         inversion 0]
+    (if (-> (first notes) (mod 12) (= root))
+      inversion
+      (recur (invert-desc notes) (inc inversion)))))

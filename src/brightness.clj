@@ -45,8 +45,8 @@
 
 (def base-interval-brightness [0 -5 2 -3 4 -1 0 1 -4 3 -2 5 0])
 
-(defn mode-brightness [mode]
-  (let [cumulative-intervals (reductions + (scherz.util/modes mode))
+(defn- scale-brightness [scale]
+  (let [cumulative-intervals (reductions + (scherz.util/scales scale))
         base-brightness (reduce (fn [acc interval]
                                   (+ acc (base-interval-brightness interval)))
                                 0 cumulative-intervals)]
@@ -58,26 +58,26 @@
 
 (defn circle-of-fifths
   ([root] (circle-of-fifths root :major))
-  ([root mode]
-   (let [bright? (pos? (mode-brightness mode))
+  ([root scale]
+   (let [bright? (pos? (scale-brightness scale))
          upper-arc (take (if bright? 6 5)
                          (drop 1 (fifths root)))
          lower-arc (take (if bright? 6 7)
                          (fifths root :desc))]
      (into upper-arc lower-arc))))
 
-(defn pitch-scale [tonic mode]
-  (let [circle (vec (circle-of-fifths tonic mode))
+(defn pitch-scale [tonic scale]
+  (let [circle (vec (circle-of-fifths tonic scale))
         root-index (.indexOf circle tonic)]
-    (->> (scherz.util/modes mode)
+    (->> (scherz.util/scales scale)
          (reductions +)
          (map #(-> % (* 7) (+ root-index) (mod 12)))
          (mapv circle)
          pop
          (into [tonic]))))
 
-(defn pitch-chord [tonic mode note-ct degree]
-  (->> (pitch-scale tonic mode)
+(defn pitch-chord [tonic scale note-ct degree]
+  (->> (pitch-scale tonic scale)
        cycle
        (drop (dec degree))
        (take-nth 2)
