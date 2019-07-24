@@ -1,4 +1,5 @@
 (ns scherz.play
+  (:use [overtone.live])
   (:use [overtone.inst.piano])
   (:require scherz.generate))
 
@@ -18,21 +19,19 @@
   (let [to-add (if (< 18 (apply max (:notes chord))) 48 60)]
     (assoc chord :notes (map (partial + to-add) (:notes chord)))))
 
-(let [tensions {:color [0 0.2 0 0.4]
-                :consonance [0 0.2 0.6 0.6]
-                :gravity [0 0.2 0.2 1]} 
+(let [tensions {:col [0 0 0.4 0.2 0.4 0.5]
+                :con [0 1 0 0.5 0.5 0]
+                :gra [0 0 0 0 0 0]}
       scales [:lydian :melodic-minor]
       progression (main tensions scales)
       stuff (map voice (generate-progression tensions scales))]
   (play-progression progression)
-;  (play-progression stuff)
-  stuff
-)
+  progression)
 
 ; TODO:
-  ; redefine gravity (or maybe just omit it?)
-    ; the differences it makes are not noticeable and it's annoying to change
-  ; fix voice leading and stuff
+    ; go over gravity stuff
     ; space notes out more? also avoid having the 7th in the bass
-  ; add mood?? and contour (for bass) !!
-  ; unit tests
+    ; find scales based on consonance more effectively
+    ; use transducers and stuff
+    ; unit tests
+    ; use lazy-seq macro instead of cycle to create infinite fifths

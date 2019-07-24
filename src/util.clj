@@ -5,8 +5,10 @@
     `(fn ~args ~new-body)))
 
 (defn avg [coll]
-  (/ (reduce + coll)
-     (count coll)))
+  (if (empty? coll)
+      nil
+      (/ (reduce + coll)
+         (count coll))))
 
 (defn abs [v]
   (max v (- v)))
@@ -18,7 +20,12 @@
        (drop offset)
        (take (count coll))))
 
-(def scales
+(def chord-shapes
+  {6 [[0 2 4 7]]
+   7 [[0 2 4 7] [0 2 4 6] [0 1 4 6] [0 3 4 6]]
+   8 [[0 2 4 6] [0 2 4 7]]})
+
+(def scale-intervals
   (let [ionian-sequence  [2 2 1 2 2 2 1]]
     {:diatonic           ionian-sequence
      :ionian             (rotate ionian-sequence 0)
@@ -66,7 +73,7 @@
         (mod 12))))
 
 (defn base-chord [tonic scale chord-shape degree]
-  (->> (cycle (scales scale))
+  (->> (cycle (scale-intervals scale))
        (reductions + (pitch->midi tonic))
        (drop (dec degree))
        (take (inc (last chord-shape)))
@@ -82,3 +89,6 @@
                   (if (< compare min)
                     (recur curr compare (rest coll))
                     (recur elem min (rest coll)))))))
+
+(defn map-vals [f m]
+  (into {} (for [[k v] m] [k (f v)])))
