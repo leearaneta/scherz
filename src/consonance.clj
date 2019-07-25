@@ -40,7 +40,7 @@
 (defn- lcm-of-ratios
   "Finds a least common multiple from a set of ratios.
   Major triads have the ratios [5/4 3/2] which is equivalent to [5/4 6/4].
-  This is seen as a 4:5:6 which have a least common multiple of 60."
+  This is seen as a 4:5:6 which has a least common multiple of 60."
   [ratios]
   (let [denominator #(if (ratio? %) (denominator %) 1)
         numerator #(if (ratio? %) (numerator %) %)

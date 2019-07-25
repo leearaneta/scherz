@@ -27,7 +27,7 @@
   (let [note-ct (count (scale-intervals scale))]
     (for [shape (chord-shapes note-ct)
           degree (range 1 (inc note-ct))]
-      {:tonic tonic :scale scale
+      {:scale scale :tonic tonic
        :root ((pitch-scale tonic scale) (dec degree))
        :pitches (pitch-chord tonic scale shape degree)
        :notes (base-chord tonic scale shape degree)})))
@@ -45,56 +45,42 @@
               filtered)))
 
 (defn- find-scale
-  "Finds [tonic scale] that contains chords close to the target color / consonance."
-  [scales {:keys [tonic scale]} target-color target-consonance]
-  (let [scale-brightness (fn [tonic scale]
-                           (->> (count (scherz.util/scale-intervals scale))
-                                (/ (scale-brightness scale))
-                                (+ (pitch-brightness tonic))
-                                (#(/ % 5))))
-        normalized-consonance (normalize-consonance scales)]
-    (->> (interleave (fifths tonic :asc)
-                     (fifths tonic :desc))
-         (drop 1)
-         (mapcat (fn [tonic] (map (partial vector tonic) scales)))
-         (filter (fn [[t s]] (<= (- target-color 0.1)
-                                 (abs-diff (scale-brightness t s)
-                                           (scale-brightness tonic scale))
-                                 (+ target-color 0.1))))
-         ; refine this
-         (filter (fn [[_ s]] (some #(<= (abs-diff % target-consonance) 0.1)
-                                   (s normalized-consonance))))
-         first)))
+  "Finds a scale that corresponds to a target consonance, and a tonic that
+  corresponds to a target color."
+  [scales prev-chord target-color target-consonance]
+  (let [scale (first (min-by #(abs-diff target-consonance (avg (second %)))
+                             (normalize-consonance scales)))
+        tonic (->> (scale-brightness scale)
+                   (- (scale-brightness (:scale prev-chord)))
+                   (+ (Math/round (double (* 5 target-color))))
+                   (fifths-above (:tonic prev-chord)))]
+    [tonic scale]))
 
 (defn generate-progression
-  "Generates a set of chords that matches tension curves within the given scales.
-  For every position in the curve, give each chord a color, consonance, and gravity
-  score based on closeness to the target."
+  "Generates a set of chords that matches tension curves within the given scales."
   ([tensions scales] (generate-progression tensions scales :C))
   ([{:keys [col con gra]} scales start-tonic]
-   (reductions (fn [prev position]
-                 (let [[targ-col targ-cons targ-gra] (map #(% pos) [col con gra])
-                       [tonic scale] (find-scale scales prev
-                                                 (targ-col) (targ-con))
+   (reductions (fn [prev pos]
+                 (let [[targ-col targ-con targ-gra] (map #(% pos) [col con gra])
+                       [tonic scale] (find-scale scales prev targ-col targ-con)
                        chords (chord-set tonic scale)
                        col-scores (map (fn [chord]
-                                        (->> (:pitches chord)
-                                             (chord-color (:pitches prev))
-                                             (#(/ % 5)) (abs-diff targ-col)))
-                                      chords)
-                       con-scores (map (partial abs-diff target-con)
-                                      (scale (normalize-consonance scales)))
-                       gra-scores (map (fn [chord]
-                                        (when-let [g (chord-gravity (:notes prev)
-                                                                    (:notes chord))]
-                                          (max (- g targ-gra) 0)))
-                                      chords)]
+                                         (->> (:pitches chord)
+                                              (chord-color (:pitches prev))
+                                              (#(/ % 5)) (abs-diff targ-col)))
+                                       chords)
+                       con-scores (map (partial abs-diff targ-con)
+                                       (scale (normalize-consonance scales)))
+                       gra-scores (map #(when-let [g (chord-gravity (:notes prev)
+                                                                    (:notes %))]
+                                          (max (- targ-gra g) 0))
+                                       chords)]
                    (apply-scores [col-scores con-scores gra-scores] chords)))
                (first (chord-set start-tonic (first scales)))
                (range 0 (count col)))))
 
 (defn voice-progression
-  "Implement proper voice leading and note range in a progression.
+  "Implement proper voice leading in a progression.
   If any note is below midi 60 or above midi 80, invert the chord."
   [progression]
   (let [constrain-voicing (fn [notes]

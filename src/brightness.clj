@@ -51,19 +51,19 @@
   -6 or 6, and is inferred based on the brightness of the rest of the scale."
   [scale]
   (let [cumulative-intervals (reductions + (scherz.util/scale-intervals scale))
-        base-interval-brightness [0 -5 2 -3 4 -1 0 1 -4 3 -2 5 0]
-        scale-brightness (reduce (fn [acc interval]
-                                   (+ acc (base-interval-brightness interval)))
-                                 0 cumulative-intervals)]
+        interval-brightness [0 -5 2 -3 4 -1 0 1 -4 3 -2 5 0]
+        scale-brightness (scherz.util/avg (map (fn [interval]
+                                                 (interval-brightness interval))
+                                               cumulative-intervals))]
     (if (some #(= 6 %) cumulative-intervals)
       (if (pos? scale-brightness)
-        (+ scale-brightness 6)
-        (- scale-brightness 6))
+        (+ scale-brightness (/ 6 (count cumulative-intervals)))
+        (- scale-brightness (/ 6 (count cumulative-intervals))))
       scale-brightness)))
 
 (defn circle-of-fifths
   "Generates a circle of fifths given a root and a scale.
-  If the scale is considered bright the tritone is after the root, otherwise below."
+  If the scale is bright the tritone is placed above the root, otherwise below."
   ([root] (circle-of-fifths root :major))
   ([root scale]
    (let [bright? (pos? (scale-brightness scale))
@@ -125,3 +125,10 @@
                                (darkest-note target-pitches))]
     (+ (max brightness-difference 0)
        (max darkness-difference 0))))
+
+(defn fifths-above
+  [root n]
+  (->> (if (pos? n) :asc :desc)
+       (fifths root)
+       (drop (scherz.util/abs n))
+       first))
