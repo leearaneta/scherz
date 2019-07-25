@@ -76,7 +76,7 @@
 
 (def scale-dissonance
   "Maps each scale to a list of dissonance values, each one representing the
-  dissonance of one chord.  Can be used to ballpark how 'consonant' a scale is."
+  dissonance of one chord.  Can be used to ballpark how dissonant a scale is."
   (map-vals (fn [intervals]
               (let [note-ct (count intervals)]
                 (for [shape (chord-shapes note-ct)

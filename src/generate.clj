@@ -24,13 +24,20 @@
 (defn chord-set
   "Returns all chords within a given tonic / scale."
   [tonic scale]
-  (let [note-ct (count (scale-intervals scale))]
+  (let [note-ct (count (scale-intervals scale))
+        combine-keywords (fn [& keywords]
+                           (if (some nil? keywords)
+                             nil
+                             (->> keywords (map name) (apply str) keyword)))]
     (for [shape (chord-shapes note-ct)
           degree (range 1 (inc note-ct))]
-      {:scale scale :tonic tonic
-       :root ((pitch-scale tonic scale) (dec degree))
-       :pitches (pitch-chord tonic scale shape degree)
-       :notes (base-chord tonic scale shape degree)})))
+      (let [notes (base-chord tonic scale shape degree)
+            root ((pitch-scale tonic scale) (dec degree))]
+        {:scale scale :tonic tonic :notes notes :root root
+         :type (combine-keywords root (chord-type notes))
+         :pitches (pitch-chord tonic scale shape degree)}))))
+
+(chord-set :C :major)
 
 (defn- normalize-dissonance
   "Within given scales, normalizes dissonance values from 0 to 1 for each chord."

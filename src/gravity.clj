@@ -75,3 +75,4 @@
     (if (-> (first notes) (mod 12) (= root))
       inversion
       (recur (invert-desc notes) (inc inversion)))))
+

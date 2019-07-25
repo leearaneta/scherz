@@ -2,6 +2,10 @@
   (:require [clojure.string])
   (:require [scherz.util]))
 
+{:color [0 0.4 0 0]
+ :dissonance [0 0.5 0.8 0]
+ :gravity [0 0 0 0]}
+
 (defn valid-direction? [direction]
   (or (= direction :asc) (= direction :desc)))
 
@@ -35,14 +39,15 @@
          shift-fn (if (= direction :asc) sharpen flatten)
          natural-root (first (name root))
          initial-accidental (subs (name root) 1)
-         shift (fn [index value]
+         shift (fn [[index value]]
                  (->> (/ index 7)
                       (#(Math/floor %))
                       (shift-fn value)))]
      (->> base-fifths
           (map #(keyword (str % initial-accidental)))
           cycle
-          (map-indexed shift)
+          (map vector (range))
+          (map shift)
           (drop (.indexOf base-fifths natural-root))))))
 
 (defn scale-brightness
@@ -51,14 +56,14 @@
   -6 or 6, and is inferred based on the brightness of the rest of the scale."
   [scale]
   (let [cumulative-intervals (reductions + (scherz.util/scale-intervals scale))
+        note-ct (count cumulative-intervals)
         interval-brightness [0 -5 2 -3 4 -1 0 1 -4 3 -2 5 0]
-        scale-brightness (scherz.util/avg (map (fn [interval]
-                                                 (interval-brightness interval))
+        scale-brightness (scherz.util/avg (map interval-brightness
                                                cumulative-intervals))]
     (if (some #(= 6 %) cumulative-intervals)
       (if (pos? scale-brightness)
-        (+ scale-brightness (/ 6 (count cumulative-intervals)))
-        (- scale-brightness (/ 6 (count cumulative-intervals))))
+        (+ scale-brightness (/ 6 note-ct))
+        (- scale-brightness (/ 6 note-ct)))
       scale-brightness)))
 
 (defn circle-of-fifths

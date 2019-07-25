@@ -1,5 +1,6 @@
 (ns scherz.util)
 
+; TODO: get this to work with spread args
 (defmacro fwhen [args body]
   (let [new-body `(if (some nil? ~args) nil ~body)]
     `(fn ~args ~new-body)))
@@ -52,16 +53,19 @@
      :diminished2        [2 1 2 1 2 1 2 1]
      :augmented          [2 2 2 2 2 2]}))
 
-(def chords
-  {:M7     #{0 4 7 11}
-   :D7     #{0 4 7 10}
-   :m7     #{0 3 7 10}
-   :d7     #{0 3 6 9}
-   :mM7    #{0 3 7 11}
-   :dM7    #{0 3 6 11}
-   :7sus2  #{0 2 7 10}
-   :7sus4  #{0 5 7 10}
-   :m7-5   #{0 3 6 10}})
+(def chord-types
+  {:M      [0 4 7 12]
+   :m      [0 3 7 12]
+   :d      [0 3 6 12]
+   :M7     [0 4 7 11]
+   :D7     [0 4 7 10]
+   :m7     [0 3 7 10]
+   :d7     [0 3 6 9]
+   :mM7    [0 3 7 11]
+   :dM7    [0 3 6 11]
+   :7sus2  [0 2 7 10]
+   :7sus4  [0 5 7 10]
+   :m7-5   [0 3 6 10]})
 
 (defn pitch->midi [pitch]
   (let [pitch (name pitch)
@@ -78,6 +82,11 @@
        (drop (dec degree))
        (take (inc (last chord-shape)))
        (#(map (vec %) chord-shape))))
+
+(defn chord-type [notes]
+  (first (first (filter (fn [[type shape]]
+                          (= shape (map #(- % (first notes)) notes)))
+                        chord-types))))
 
 (defn min-by [f coll]
   (loop [elem nil
