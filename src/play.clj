@@ -1,39 +1,9 @@
 (ns scherz.play
   (:use [overtone.live])
   (:use [overtone.inst.piano])
-  (:require scherz.gravity)
   (:require scherz.generate))
 
-(defn- invert-asc [notes]
-  (sort (cons (+ (first notes) 12)
-              (next notes))))
-
-(defn- invert-desc [notes]
-  (sort (cons (- (last notes) 12)
-              (next (reverse notes)))))
-
-(defn invert-voicing [notes shift]
-  (cond
-    (pos? shift) (recur (invert-asc notes) (dec shift))
-    (neg? shift) (recur (invert-desc notes) (inc shift))
-    (zero? shift) notes))
-
-(defn voice-progression [progression]
-  (let [adjust-voicing (fn [notes]
-                         (cond (< (apply min notes) 60) (invert-voicing notes 1)
-                               (< 78 (apply max notes)) (invert-voicing notes -1)
-                               :else notes))
-        initial-chord (:notes (first progression))
-        initial-voicing (->> (second initial-chord) (+ 12)
-                             (assoc (vec initial-chord) 1)
-                             (map (partial + 60)) sort)]
-    (reduce (fn [voiced-progression chord]
-              (conj voiced-progression
-                    (-> (peek voiced-progression)
-                        (scherz.gravity/voice-lead (:notes chord))
-                        adjust-voicing sort)))
-            [initial-voicing]
-            (rest progression))))
+(refer 'scherz.generate)
 
 (defn play-chord [notes]
   (doseq [note notes]
@@ -41,14 +11,27 @@
 
 (defn play-progression [chords]
   (let [chord-time (->> (iterate (partial + 1000) (now))
-                        (map vector chords))]
+                        (map vector (map :notes chords)))]
     (doseq [[notes time] chord-time]
       (at time (play-chord notes)))))
 
-(let [tensions {:color [0 0.5 1 1 1 0.5]
-                :consonance [0 0.5 1 1 0 0]
-                :gravity [0 0 0.5 0.5 0.5 0]}
-      start-tonic :C
-      modes [:lydian :melodic-minor]
-      progression (scherz.generate/generate-chords tensions modes start-tonic)]
-  (play-progression (voice-progression progression)))
+(defn voice [chord]
+  (let [to-add (if (< 18 (apply max (:notes chord))) 48 60)]
+    (assoc chord :notes (map (partial + to-add) (:notes chord)))))
+
+(let [tensions {:col [0 0 0.4 0.2 0.4 0.5]
+                :con [0 1 0 0.5 0.5 0]
+                :gra [0 0 0 0 0 0]}
+      scales [:lydian :melodic-minor]
+      progression (main tensions scales)
+      stuff (map voice (generate-progression tensions scales))]
+  (play-progression progression)
+  progression)
+
+; TODO:
+    ; go over gravity stuff
+    ; space notes out more? also avoid having the 7th in the bass
+    ; find scales based on consonance more effectively
+    ; use transducers and stuff
+    ; unit tests
+    ; use lazy-seq macro instead of cycle to create infinite fifths

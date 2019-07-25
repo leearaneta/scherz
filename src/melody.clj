@@ -1,11 +1,13 @@
 (ns scherz.melody
-  (:use [overtone.live]))
+  (:require [scherz.util]))
+
+(refer 'scherz.util)
 
 (defn interval-tension [current-note midi-scale]
   (let [nearest-position (count (take-while #(< % current-note)
                                             midi-scale))]
     (map-indexed
-     (fn [i v] (->> i (- nearest-position) (#(Math/abs %))))
+     (fn [i v] (->> i (- nearest-position) abs))
      midi-scale)))
 
 (defn harmonic-tension [chord midi-scale]
@@ -23,10 +25,10 @@
          midi-scale)))
 
 (defn midi-scale
-  ([root mode] (midi-scale root mode 12))
-  ([root mode octaves]
-   (let [base (NOTES root)
-         intervals (SCALE mode)
+  ([tonic mode] (midi-scale tonic mode 12))
+  ([tonic mode octaves]
+   (let [base (pitch->midi tonic)
+         intervals (modes mode)
          interval-cycle (take (* (count intervals) octaves)
                               (cycle intervals))]
      (drop-last (reductions + base interval-cycle)))))
