@@ -15,9 +15,9 @@
     (doseq [[notes time] chord-time]
       (at time (play-chord notes)))))
 
-(let [tensions {:col [0 0 0 0.2]
-                :con [0 0.4 0.75 0.1]
-                :gra [0 0 0 0]}
+(let [tensions {:color [0 0 0 0.2]
+                :dissonance [0 0.4 0.75 0.1]
+                :gravity [0 0 0 0]}
       scales [:major :harmonic-minor]
       progression (main tensions scales)]
   (play-progression progression)

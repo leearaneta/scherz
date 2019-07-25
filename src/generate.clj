@@ -1,11 +1,11 @@
 (ns scherz.generate
   (:require [scherz.util])
-  (:require [scherz.consonance])
+  (:require [scherz.dissonance])
   (:require [scherz.gravity])
   (:require [scherz.brightness]))
 
 (refer 'scherz.util)
-(refer 'scherz.consonance)
+(refer 'scherz.dissonance)
 (refer 'scherz.gravity)
 (refer 'scherz.brightness)
 
@@ -32,24 +32,24 @@
        :pitches (pitch-chord tonic scale shape degree)
        :notes (base-chord tonic scale shape degree)})))
 
-(defn- normalize-consonance
-  "Within given scales, normalizes consonance values from 0 to 1 for each chord."
+(defn- normalize-dissonance
+  "Within given scales, normalizes dissonance values from 0 to 1 for each chord."
   [scales]
-  (let [filtered (select-keys scale-consonance scales)
-        consonance-vals (clojure.core/flatten (vals filtered))
-        min-consonance (apply min consonance-vals)
-        max-consonance (apply max consonance-vals)
-        diff (- max-consonance min-consonance)]
-    (map-vals (fn [val]
-                (map #(-> % (- min-consonance) (/ diff)) val))
+  (let [filtered (select-keys scale-dissonance scales)
+        dissonance-vals (clojure.core/flatten (vals filtered))
+        min-dissonance (apply min dissonance-vals)
+        max-dissonance (apply max dissonance-vals)
+        diff (- max-dissonance min-dissonance)]
+    (map-vals (fn [vals]
+                (map #(-> % (- min-dissonance) (/ diff)) vals))
               filtered)))
 
 (defn- find-scale
-  "Finds a scale that corresponds to a target consonance, and a tonic that
+  "Finds a scale that corresponds to a target dissonance, and a tonic that
   corresponds to a target color."
-  [scales prev-chord target-color target-consonance]
-  (let [scale (first (min-by #(abs-diff target-consonance (avg (second %)))
-                             (normalize-consonance scales)))
+  [scales prev-chord target-color target-dissonance]
+  (let [scale (first (min-by #(abs-diff target-dissonance (avg (second %)))
+                             (normalize-dissonance scales)))
         tonic (->> (scale-brightness scale)
                    (- (scale-brightness (:scale prev-chord)))
                    (+ (Math/round (double (* 5 target-color))))
@@ -59,25 +59,26 @@
 (defn generate-progression
   "Generates a set of chords that matches tension curves within the given scales."
   ([tensions scales] (generate-progression tensions scales :C))
-  ([{:keys [col con gra]} scales start-tonic]
+  ([{:keys [color dissonance gravity]} scales start-tonic]
    (reductions (fn [prev pos]
-                 (let [[targ-col targ-con targ-gra] (map #(% pos) [col con gra])
-                       [tonic scale] (find-scale scales prev targ-col targ-con)
+                 (let [[targ-col targ-dis targ-gra] (map #(% pos)
+                                                         [color dissonance gravity])
+                       [tonic scale] (find-scale scales prev targ-col targ-dis)
                        chords (chord-set tonic scale)
                        col-scores (map (fn [chord]
                                          (->> (:pitches chord)
                                               (chord-color (:pitches prev))
                                               (#(/ % 5)) (abs-diff targ-col)))
                                        chords)
-                       con-scores (map (partial abs-diff targ-con)
-                                       (scale (normalize-consonance scales)))
+                       dis-scores (map (partial abs-diff targ-dis)
+                                       (scale (normalize-dissonance scales)))
                        gra-scores (map #(when-let [g (chord-gravity (:notes prev)
                                                                     (:notes %))]
                                           (max (- targ-gra g) 0))
                                        chords)]
-                   (apply-scores [col-scores con-scores gra-scores] chords)))
+                   (apply-scores [col-scores dis-scores gra-scores] chords)))
                (first (chord-set start-tonic (first scales)))
-               (range 0 (count col)))))
+               (range 0 (count color)))))
 
 (defn voice-progression
   "Implement proper voice leading in a progression.

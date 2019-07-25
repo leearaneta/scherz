@@ -1,4 +1,4 @@
-(ns scherz.consonance
+(ns scherz.dissonance
   (:require [scherz.util]))
 
 (refer 'scherz.util)
@@ -64,8 +64,8 @@
 (defn prime-factors-of [n]
   (factors-starting-at 2 n))
 
-(defn- consonance
-  "Measures consonance of a chord based on Euler's Gradus Suavitatis."
+(defn- dissonance
+  "Measures dissonance of a chord based on Euler's Gradus Suavitatis."
   [notes]
   (->> (chord->ratios notes)
        lcm-of-ratios
@@ -74,9 +74,9 @@
        (map (fn [[prime exponent]] (* exponent (dec prime))))
        (reduce +) inc))
 
-(def scale-consonance
-  "Maps each scale to a list of consonance values, each one representing the
-  consonance of one chord.  Can be used to ballpark how 'consonant' a scale is."
+(def scale-dissonance
+  "Maps each scale to a list of dissonance values, each one representing the
+  dissonance of one chord.  Can be used to ballpark how 'consonant' a scale is."
   (map-vals (fn [intervals]
               (let [note-ct (count intervals)]
                 (for [shape (chord-shapes note-ct)
@@ -86,5 +86,5 @@
                        (drop (dec degree))
                        (take (inc (last shape)))
                        (#(map (vec %) shape))
-                       consonance))))
+                       dissonance))))
             scale-intervals))
