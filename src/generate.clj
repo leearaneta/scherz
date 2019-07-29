@@ -37,8 +37,6 @@
          :type (combine-keywords root (chord-type notes))
          :pitches (pitch-chord tonic scale shape degree)}))))
 
-(chord-set :C :major)
-
 (defn- normalize-dissonance
   "Within given scales, normalizes dissonance values from 0 to 1 for each chord."
   [scales]
@@ -67,6 +65,7 @@
   "Generates a set of chords that matches tension curves within the given scales."
   ([tensions scales] (generate-progression tensions scales :C))
   ([{:keys [color dissonance gravity]} scales start-tonic]
+   {:pre (= (count color) (count dissonance) (count gravity))}
    (reductions (fn [prev pos]
                  (let [[targ-col targ-dis targ-gra] (map #(% pos)
                                                          [color dissonance gravity])
