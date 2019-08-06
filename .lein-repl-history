@@ -2,3 +2,37 @@
 (envelope [0 0.5 1] [1 1] :step)
 (demo (sin-osc))
 (sorted-set [0 1])
+(main [{:color 0 :dissonance 0 :gravity 0}])
+main
+voice-progression
+(quit)
+(require '[scherz.play :refer :all])
+(quit)
+main
+-main
+(main [{:color 0 :dissonance 0 :gravity 0}] [:lydian])
+(quit)
+(main [{:color 0 :dissonance 0 :gravity 0}] [:lydian])
+`(def color [0 0.4 0 0])`
+(def color [0 0.4 0 0])
+(def dissonance [0 0.5 0.8 0])
+(def gravity [0 0 0 0])
+(def tensions (map (fn [c d g] {:color c :dissonance d :gravity g}) color dissonance gravity)])
+(def tensions (map (fn [c d g] {:color c :dissonance d :gravity g}) color dissonance gravity))
+(def scales [:major :diminished])
+(main tensions scales)
+(:require scherz.play)
+(in-ns scherz.play)
+(in-ns 'scherz.play)
+color
+(in-ns 'scherz.generate)
+color
+(:require 'scherz.play)
+(:require 'scherz.play :refer)
+play-progression
+scherz.play/play-progression
+(refer 'scherz.play)
+play-progression
+(require '[scherz.play :refer [play-progression]])
+(play-progression (main tensions scales))
+(quit)

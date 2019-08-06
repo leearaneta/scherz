@@ -1,4 +1,5 @@
 (ns scherz.generate
+  (:gen-class)
   (:require [scherz.util])
   (:require [scherz.dissonance])
   (:require [scherz.gravity])
@@ -111,3 +112,5 @@
                 (rest progression))))
 
 (def main (comp voice-progression generate-progression))
+
+(defn -main [& args] "hi")

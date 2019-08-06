@@ -21,11 +21,9 @@
     (neg? shift) (recur (invert-desc notes) (inc shift))
     (zero? shift) notes))
 
-(invert '(12 16 19 23) -3)
-
 (defn- gravity
   "Measures, from 0 to 1, how spatially close two chords are given a transition.
-  Higher gravity results in more half step resolutions."
+  More half step resolutions results in higher gravity."
   [transition]
   (->> transition
        (map second)

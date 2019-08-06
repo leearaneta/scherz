@@ -9,18 +9,22 @@
                       (->> (/ i 12)
                            (#(Math/floor %))
                            (#(Math/pow 2 %))
-                           int (* v)))]
+                           int
+                           (* v)))]
     (->> (cycle base-ratios)
          (take (* (count base-ratios) 8))
-         (map-indexed add-octaves) vec)))
+         (map-indexed add-octaves)
+         vec)))
 
-(defn chord->ratios
+(defn- chord->ratios
   "Converts a set of notes into frequency ratios above the lowest note.
   (chord->ratios '(0 4 7)) -> [5/4 3/2]"
   [notes]
   (map (fn [note]
-         (->> (first notes) (- note)
-              dec freq-ratios))
+         (->> (first notes)
+              (- note)
+              dec
+              freq-ratios))
        (rest notes)))
 
 (defn- gcd [a b]
@@ -33,7 +37,7 @@
 
 (defn- lcmv [& v] (reduce lcm v))
 
-(defn lcm-of-ratios
+(defn- lcm-of-ratios
   "Finds a least common multiple from a set of ratios.
   Major triads have the ratios [5/4 3/2] which is equivalent to [5/4 6/4].
   This is seen as a 4:5:6 which has a least common multiple of 60."
@@ -48,7 +52,8 @@
     (->> ratios
          (map normalize-ratio)
          (cons multiple)
-         (apply lcmv) int)))
+         (apply lcmv)
+         int)))
 
 (defn factors-starting-at [f n]
   (cond
@@ -59,7 +64,7 @@
 (defn prime-factors-of [n]
   (factors-starting-at 2 n))
 
-(defn dissonance
+(defn- dissonance
   "Measures dissonance of a chord based on Euler's Gradus Suavitatis."
   [notes]
   (->> (chord->ratios notes)

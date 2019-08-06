@@ -67,8 +67,7 @@
    :7sus4  [0 5 7 10]
    :m7-5   [0 3 6 10]})
 
-(defn pitch->midi
-  [pitch]
+(defn pitch->midi [pitch]
   (let [pitch (name pitch)
         notes {\C 0 \D 2 \E 4 \F 5 \G 7 \A 9 \B 11}
         multiplier (if (= \# (last pitch)) 1 -1)]

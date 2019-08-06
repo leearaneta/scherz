@@ -2,6 +2,10 @@
   (:require [clojure.string])
   (:require [scherz.util]))
 
+{:color [0 0.4 0 0]
+ :dissonance [0 0.5 0.8 0]
+ :gravity [0 0 0 0]}
+
 (defn valid-direction? [direction]
   (or (= direction :asc) (= direction :desc)))
 
