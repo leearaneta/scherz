@@ -1,7 +1,5 @@
 (ns scherz.gravity
-  (:require [scherz.util]))
-
-(refer 'scherz.util)
+  (:require [scherz.util :refer [min-by abs avg]]))
 
 (defn- compress [notes]
   (sort (map (fn [x] (mod x 12)) notes)))
@@ -75,4 +73,3 @@
     (if (-> (first notes) (mod 12) (= root))
       inversion
       (recur (invert-desc notes) (inc inversion)))))
-

@@ -1,8 +1,8 @@
 (ns scherz.brightness
-  (:require [clojure.string])
-  (:require [scherz.util]))
+  (:require [clojure.string :refer [ends-with?]])
+  (:require [scherz.util :refer [abs avg scale-intervals floor]]))
 
-(defn valid-direction? [direction]
+(defn- valid-direction? [direction]
   (or (= direction :asc) (= direction :desc)))
 
 (defn shift-pitch
@@ -15,7 +15,7 @@
              pop-string (fn [s] (subs s 0 (- (count s) 1)))
              to-remove (if (= direction :asc) "b" "#")
              to-add (if (= direction :asc) "#" "b")]
-         (if (clojure.string/ends-with? pitch to-remove)
+         (if (ends-with? pitch to-remove)
            (recur direction (pop-string pitch) (- amt 1))
            (recur direction (str pitch to-add) (- amt 1)))))))
 
@@ -36,9 +36,7 @@
          natural-root (first (name root))
          initial-accidental (subs (name root) 1)
          shift (fn [[index value]]
-                 (->> (/ index 7)
-                      (#(Math/floor %))
-                      (shift-fn value)))]
+                 (->> (/ index 7) floor (shift-fn value)))]
      (->> base-fifths
           (map #(keyword (str % initial-accidental)))
           cycle
@@ -51,11 +49,11 @@
   circle of fifths relative to the root, and adds them all up.  The tritone can be
   -6 or 6, and is inferred based on the brightness of the rest of the scale."
   [scale]
-  (let [cumulative-intervals (reductions + (scherz.util/scale-intervals scale))
+  (let [cumulative-intervals (reductions + (scale-intervals scale))
         note-ct (count cumulative-intervals)
         interval-brightness [0 -5 2 -3 4 -1 0 1 -4 3 -2 5 0]
-        scale-brightness (scherz.util/avg (map interval-brightness
-                                               cumulative-intervals))]
+        scale-brightness (avg (map interval-brightness
+                                   cumulative-intervals))]
     (if (some #(= 6 %) cumulative-intervals)
       (if (pos? scale-brightness)
         (+ scale-brightness (/ 6 note-ct))
@@ -80,7 +78,7 @@
   [tonic scale]
   (let [circle (vec (circle-of-fifths tonic scale))
         root-index (.indexOf circle tonic)
-        intervals (scherz.util/scale-intervals scale)]
+        intervals (scale-intervals scale)]
     (->> intervals
          (reductions +)
          (map #(-> % (* 7) (+ root-index) (mod 12)))
@@ -131,5 +129,5 @@
   [root n]
   (->> (if (pos? n) :asc :desc)
        (fifths root)
-       (drop (scherz.util/abs n))
+       (drop (abs n))
        first))
