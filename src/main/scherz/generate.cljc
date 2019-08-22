@@ -31,9 +31,7 @@
             pitched-chord (b/pitch-chord tonic scale shape degree)]
         {:scale scale :tonic tonic :notes notes :root root
          :pitches pitched-chord
-         :sorted (sort-by b/pitch-brightness pitched-chord)
-         :type (combine-keywords root (u/chord-type notes))
-         :circle (b/circle-of-fifths tonic scale)}))))
+         :type (combine-keywords root (u/chord-type notes))}))))
 
 (defn- normalize-dissonance
   "Within given scales, normalizes dissonance values from 0 to 1 for each chord."
@@ -116,12 +114,19 @@
                 (rest progression))))
 
 (defn clean-progression [progression]
-  (let [clean-chord (fn [chord]
-                      (->> (select-keys chord [:notes :pitches :sorted])
-                           (u/map-vals dedupe)
-                           (into chord)))
-        cleaned-progression (map clean-chord progression)]
-    #?(:clj cleaned-progression
-       :cljs (clj->js cleaned-progression))))
+  {:post [(= (map (comp count :pitches) %)
+             (map (comp count :notes) %))]}
+  (let [dedupe-chord (fn [chord]
+                       (->> (select-keys chord [:notes :pitches])
+                            (u/map-vals distinct)
+                            (into chord)))
+        add-pitch (fn [{:keys [pitches notes] :as chord}]
+                    (if (not= (count pitches) (count notes))
+                      (assoc chord :pitches (conj (vec pitches)
+                                                  (first pitches)))
+                      chord))]
+    (->> progression
+         (map dedupe-chord)
+         (map add-pitch))))
 
 (def main (comp clean-progression voice-progression generate-progression))

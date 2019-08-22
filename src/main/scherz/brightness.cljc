@@ -2,47 +2,38 @@
   (:require [clojure.string :refer [ends-with?]])
   (:require [scherz.util :refer [abs avg scale-intervals floor]]))
 
-(defn- valid-direction? [direction]
+(defn valid-direction? [direction]
   (or (= direction :asc) (= direction :desc)))
 
 (defn shift-pitch
   "Sharpens or flattens a pitch based on direction."
-  ([direction pitch] (shift-pitch direction pitch 1))
-  ([direction pitch amt]
-   {:pre [(valid-direction? direction)]}
-   (if (== amt 0) (keyword pitch)
-       (let [pitch (name pitch)
-             pop-string (fn [s] (subs s 0 (- (count s) 1)))
-             to-remove (if (= direction :asc) "b" "#")
-             to-add (if (= direction :asc) "#" "b")]
-         (if (ends-with? pitch to-remove)
-           (recur direction (pop-string pitch) (- amt 1))
-           (recur direction (str pitch to-add) (- amt 1)))))))
-
-(def sharpen (partial shift-pitch :asc))
-(def flatten (partial shift-pitch :desc))
+  ([direction pitch]
+   {:pre [(valid-direction? direction)]}   
+   (let [pop-string (fn [s] (subs s 0 (- (count s) 1)))
+         to-remove (if (= direction :asc) "b" "#")
+         to-add (if (= direction :asc) "#" "b")]
+     (if (ends-with? pitch to-remove)
+       (pop-string pitch)
+       (str pitch to-add)))))
 
 (def base-circle [\F \C \G \D \A \E \B])
 
+(def pitch-indexes
+  (reduce-kv (fn [acc index pitch] (into acc {pitch index}))
+             {} base-circle))
+
 (defn fifths
   "Creates an infinite sequence of fifths (ascending or descending)."
-  ([root] (fifths root :asc))
-  ([root direction]
-   {:pre [(valid-direction? direction)]}
-   (let [base-fifths (if (= direction :asc)
-                       base-circle
-                       (reverse base-circle))
-         shift-fn (if (= direction :asc) sharpen flatten)
-         natural-root (first (name root))
-         initial-accidental (subs (name root) 1)
-         shift (fn [[index value]]
-                 (->> (/ index 7) floor (shift-fn value)))]
-     (->> base-fifths
-          (map #(keyword (str % initial-accidental)))
-          cycle
-          (map vector (range))
-          (map shift)
-          (drop (.indexOf base-fifths natural-root))))))
+  ([note] (fifths note :asc))
+  ([note direction]
+   {:pre [(valid-direction? direction)]}   
+   (let [note (name note)
+         index-fn (if (= direction :asc) inc dec)
+         note-fn (partial shift-pitch direction)
+         new-index (index-fn (pitch-indexes (first note)))
+         new-note (-> (mod new-index 7) base-circle (str (subs note 1))
+                      (#(if (<= 0 new-index 6) % (note-fn %))))]
+     (lazy-seq (cons (keyword note) (fifths new-note direction))))))
 
 (defn scale-brightness
   "Assigns each note in a scale a level of brightness based on its position in the
