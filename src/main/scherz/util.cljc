@@ -1,18 +1,24 @@
 (ns scherz.util)
 
-; TODO: get this to work with spread args
 (defmacro fwhen [args body]
-  (let [new-body `(if (some nil? ~args) nil ~body)]
-    `(fn ~args ~new-body)))
+  (let [a (if (some #(= '& %) args)
+               `(concat ~(-> args vec pop pop) ~(last args))
+               args)]
+    `(fn ~args
+       (if (some nil? ~a) nil ~body))))
 
 (defn avg [coll]
   (if (empty? coll)
-      nil
-      (/ (reduce + coll)
-         (count coll))))
+    nil
+    (/ (reduce + coll)
+       (count coll))))
 
 (defn abs [v]
   (max v (- v)))
+
+(def infinity
+  #?(:clj Integer/MAX_VALUE
+     :cljs js/Infinity))
 
 (def abs-diff (comp abs -))
 
@@ -21,9 +27,12 @@
        (drop offset)
        (take (count coll))))
 
+(defn floor [n]
+  (Math/floor n))
+
 (def chord-shapes
-  {6 [[0 2 4 7]]
-   7 [[0 2 4 7] [0 2 4 6] [0 1 4 6] [0 3 4 6]]
+  {6 [[0 2 4 6] [0 1 2 4]]
+   7 [[0 2 4 7] [0 2 4 6] [0 1 4 6] [0 3 4 6] [0 1 2 4]]
    8 [[0 2 4 6] [0 2 4 7]]})
 
 (def scale-intervals
@@ -65,12 +74,19 @@
    :dM7    [0 3 6 11]
    :7sus2  [0 2 7 10]
    :7sus4  [0 5 7 10]
-   :m7-5   [0 3 6 10]})
+   :M7sus2 [0 2 7 11]
+   :M7sus4 [0 5 7 11]
+   :m7-5   [0 3 6 10]
+   :Madd2  [0 2 4 7]
+   :madd2  [0 2 3 7]})
 
-(defn pitch->midi
-  [pitch]
-  (let [pitch (name pitch)
-        notes {\C 0 \D 2 \E 4 \F 5 \G 7 \A 9 \B 11}
+(defn chord-type [notes]
+  (first (filter (fn [k] (= (k chord-types)
+                            (map #(- % (first notes)) notes)))
+                 (keys chord-types))))
+
+(defn pitch->midi [pitch]
+  (let [notes {\C 0 \D 2 \E 4 \F 5 \G 7 \A 9 \B 11}
         multiplier (if (= \# (last pitch)) 1 -1)]
     (-> (dec (count pitch))
         (* multiplier)
@@ -84,14 +100,9 @@
        (take (inc (last chord-shape)))
        (#(map (vec %) chord-shape))))
 
-(defn chord-type [notes]
-  (first (first (filter (fn [[type shape]]
-                          (= shape (map #(- % (first notes)) notes)))
-                        chord-types))))
-
 (defn min-by [f coll]
   (loop [elem nil
-         min Integer/MAX_VALUE
+         min infinity
          coll coll]
     (cond (empty? coll) elem
           :else (let [curr (first coll)
@@ -99,6 +110,10 @@
                   (if (< compare min)
                     (recur curr compare (rest coll))
                     (recur elem min (rest coll)))))))
+
+(defn max-by [f coll]
+  (min-by (comp (fn [v] (/ 1 v)) f)
+          coll))
 
 (defn map-vals [f m]
   (into {} (for [[k v] m] [k (f v)])))

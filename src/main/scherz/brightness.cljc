@@ -1,61 +1,49 @@
 (ns scherz.brightness
-  (:require [clojure.string])
-  (:require [scherz.util]))
+  (:require [clojure.string :refer [ends-with?]])
+  (:require [scherz.util :refer [abs avg scale-intervals floor]]))
 
 (defn valid-direction? [direction]
   (or (= direction :asc) (= direction :desc)))
 
-(defn shift-pitch
+(defn- shift-pitch
   "Sharpens or flattens a pitch based on direction."
-  ([direction pitch] (shift-pitch direction pitch 1))
-  ([direction pitch amt]
-   {:pre [(valid-direction? direction)]}
-   (if (== amt 0) (keyword pitch)
-       (let [pitch (name pitch)
-             pop-string (fn [s] (subs s 0 (- (count s) 1)))
-             to-remove (if (= direction :asc) "b" "#")
-             to-add (if (= direction :asc) "#" "b")]
-         (if (clojure.string/ends-with? pitch to-remove)
-           (recur direction (pop-string pitch) (- amt 1))
-           (recur direction (str pitch to-add) (- amt 1)))))))
-
-(def sharpen (partial shift-pitch :asc))
-(def flatten (partial shift-pitch :desc))
+  ([direction pitch]
+   {:pre [(valid-direction? direction)]}   
+   (let [pop-string (fn [s] (subs s 0 (- (count s) 1)))
+         to-remove (if (= direction :asc) "b" "#")
+         to-add (if (= direction :asc) "#" "b")]
+     (if (ends-with? pitch to-remove)
+       (pop-string pitch)
+       (str pitch to-add)))))
 
 (def base-circle [\F \C \G \D \A \E \B])
 
+(def pitch-indexes
+  (reduce-kv (fn [acc index pitch] (into acc {pitch index}))
+             {} base-circle))
+
 (defn fifths
   "Creates an infinite sequence of fifths (ascending or descending)."
-  ([root] (fifths root :asc))
-  ([root direction]
-   {:pre [(valid-direction? direction)]}
-   (let [base-fifths (if (= direction :asc)
-                       base-circle
-                       (reverse base-circle))
-         shift-fn (if (= direction :asc) sharpen flatten)
-         natural-root (first (name root))
-         initial-accidental (subs (name root) 1)
-         shift (fn [[index value]]
-                 (->> (/ index 7)
-                      (#(Math/floor %))
-                      (shift-fn value)))]
-     (->> base-fifths
-          (map #(keyword (str % initial-accidental)))
-          cycle
-          (map vector (range))
-          (map shift)
-          (drop (.indexOf base-fifths natural-root))))))
+  ([note] (fifths note :asc))
+  ([note direction]
+   {:pre [(valid-direction? direction)]}   
+   (let [index-fn (if (= direction :asc) inc dec)
+         note-fn (partial shift-pitch direction)
+         new-index (index-fn (pitch-indexes (first note)))
+         new-note (-> (mod new-index 7) base-circle (str (subs note 1))
+                      (#(if (<= 0 new-index 6) % (note-fn %))))]
+     (lazy-seq (cons note (fifths new-note direction))))))
 
 (defn scale-brightness
   "Assigns each note in a scale a level of brightness based on its position in the
   circle of fifths relative to the root, and adds them all up.  The tritone can be
   -6 or 6, and is inferred based on the brightness of the rest of the scale."
   [scale]
-  (let [cumulative-intervals (reductions + (scherz.util/scale-intervals scale))
+  (let [cumulative-intervals (reductions + (scale-intervals scale))
         note-ct (count cumulative-intervals)
         interval-brightness [0 -5 2 -3 4 -1 0 1 -4 3 -2 5 0]
-        scale-brightness (scherz.util/avg (map interval-brightness
-                                               cumulative-intervals))]
+        scale-brightness (avg (map interval-brightness
+                                   cumulative-intervals))]
     (if (some #(= 6 %) cumulative-intervals)
       (if (pos? scale-brightness)
         (+ scale-brightness (/ 6 note-ct))
@@ -63,15 +51,15 @@
       scale-brightness)))
 
 (defn circle-of-fifths
-  "Generates a circle of fifths given a root and a scale.
+  "Generates a circle of fifths given a tonic and a scale.
   If the scale is bright the tritone is placed above the root, otherwise below."
-  ([root] (circle-of-fifths root :major))
-  ([root scale]
+  ([tonic] (circle-of-fifths tonic :major))
+  ([tonic scale]
    (let [bright? (pos? (scale-brightness scale))
          upper-arc (take (if bright? 6 5)
-                         (drop 1 (fifths root)))
+                         (drop 1 (fifths tonic)))
          lower-arc (take (if bright? 6 7)
-                         (fifths root :desc))]
+                         (fifths tonic :desc))]
      (into upper-arc lower-arc))))
 
 (defn pitch-scale
@@ -80,7 +68,7 @@
   [tonic scale]
   (let [circle (vec (circle-of-fifths tonic scale))
         root-index (.indexOf circle tonic)
-        intervals (scherz.util/scale-intervals scale)]
+        intervals (scale-intervals scale)]
     (->> intervals
          (reductions +)
          (map #(-> % (* 7) (+ root-index) (mod 12)))
@@ -101,9 +89,8 @@
   "Measures a pitch's brightness based on its position in the circle of fifths.
   More useful as a relative measure - arbitrarily F has a brightness of 0."
   [pitch]
-  (let [p (name pitch)
-        counts (frequencies p)]
-    (+ (.indexOf base-circle (first p))
+  (let [counts (frequencies pitch)]
+    (+ (.indexOf base-circle (first pitch))
        (* 7 (get counts \# 0))
        (* -7 (get counts \b 0)))))
 
@@ -131,5 +118,5 @@
   [root n]
   (->> (if (pos? n) :asc :desc)
        (fifths root)
-       (drop (scherz.util/abs n))
+       (drop (abs n))
        first))
