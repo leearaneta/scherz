@@ -31,8 +31,8 @@
   (Math/floor n))
 
 (def chord-shapes
-  {6 [[0 2 4 7]]
-   7 [[0 2 4 7] [0 2 4 6] [0 1 4 6] [0 3 4 6]]
+  {6 [[0 2 4 6] [0 1 2 4]]
+   7 [[0 2 4 7] [0 2 4 6] [0 1 4 6] [0 3 4 6] [0 1 2 4]]
    8 [[0 2 4 6] [0 2 4 7]]})
 
 (def scale-intervals
@@ -74,7 +74,11 @@
    :dM7    [0 3 6 11]
    :7sus2  [0 2 7 10]
    :7sus4  [0 5 7 10]
-   :m7-5   [0 3 6 10]})
+   :M7sus2 [0 2 7 11]
+   :M7sus4 [0 5 7 11]
+   :m7-5   [0 3 6 10]
+   :Madd2  [0 2 4 7]
+   :madd2  [0 2 3 7]})
 
 (defn chord-type [notes]
   (first (filter (fn [k] (= (k chord-types)
@@ -82,8 +86,7 @@
                  (keys chord-types))))
 
 (defn pitch->midi [pitch]
-  (let [pitch (name pitch)
-        notes {\C 0 \D 2 \E 4 \F 5 \G 7 \A 9 \B 11}
+  (let [notes {\C 0 \D 2 \E 4 \F 5 \G 7 \A 9 \B 11}
         multiplier (if (= \# (last pitch)) 1 -1)]
     (-> (dec (count pitch))
         (* multiplier)
@@ -107,6 +110,10 @@
                   (if (< compare min)
                     (recur curr compare (rest coll))
                     (recur elem min (rest coll)))))))
+
+(defn max-by [f coll]
+  (min-by (comp (fn [v] (/ 1 v)) f)
+          coll))
 
 (defn map-vals [f m]
   (into {} (for [[k v] m] [k (f v)])))

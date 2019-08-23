@@ -1,6 +1,7 @@
 (ns scherz.exports
   (:require [scherz.brightness :refer [pitch-brightness circle-of-fifths]])
-  (:require [scherz.generate :refer [main]]))
+  (:require [scherz.generate :refer [main]])
+  (:require [scherz.util :refer [scale-intervals]]))
 
 (defn add-spiral [progression]
   (let [add-circle (fn [{:keys [tonic scale] :as chord}]
@@ -18,4 +19,7 @@
        :cljs (clj->js {:spiral spiral :progression progression}))))
 
 (def generate (comp add-spiral main))
+(def scales #?(:clj (keys scale-intervals)
+               :cljs (clj->js (keys scale-intervals))))
+
 

@@ -15,8 +15,8 @@
         {:numerator (* numerator scalar)}))
 
 (def freq-ratios
-  (let [base-ratios [[25 24] [9 8] [6 5] [5 4] [4 3] [45 32]
-                     [3 2] [8 5] [5 3] [9 5] [15 8] [2 1]]
+  (let [base-ratios [[1 1] [25 24] [9 8] [6 5] [5 4] [4 3]
+                     [45 32] [3 2] [8 5] [5 3] [9 5] [15 8]]
         add-octaves (fn [[index ratio]]
                       (->> (/ index 12) floor (exp 2) (multiply-ratio ratio)))]
     (->> (cycle base-ratios)
@@ -31,8 +31,8 @@
   (chord->ratios '(0 4 7)) -> [5/4 3/2]"
   [notes]
   (map (fn [note]
-         (->> (first notes) (- note) dec freq-ratios))
-       (rest notes)))
+         (->> (first notes) (- note) freq-ratios))
+       notes))
 
 (defn- lcm [coll]
   (reduce (fn [a b]
@@ -47,10 +47,7 @@
   (let [multiple (lcm (map :denominator ratios))
         normalize-ratio (fn [{:keys [denominator numerator]}]
                           (->> denominator (/ multiple) (* numerator)))]
-    (->> ratios
-         (map normalize-ratio)
-         (cons multiple)
-         lcm)))
+    (lcm (map normalize-ratio ratios))))
 
 (defn prime-factors
   ([n] (prime-factors 2 n))
@@ -70,18 +67,3 @@
        (map (fn [[prime exponent]] (* exponent (dec prime))))
        (reduce +)
        inc))
-
-(def scale-dissonance
-  "Maps each scale to a list of dissonance values, each one representing the
-  dissonance of one chord.  Can be used to ballpark how dissonant a scale is."
-  (map-vals (fn [intervals]
-              (let [note-ct (count intervals)]
-                (for [shape (chord-shapes note-ct)
-                      degree (range 1 (inc note-ct))]
-                  (->> (cycle intervals)
-                       (reductions + 0)
-                       (drop (dec degree))
-                       (take (inc (last shape)))
-                       (#(map (vec %) shape))
-                       chord-dissonance))))
-            scale-intervals))

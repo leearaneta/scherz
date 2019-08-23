@@ -19,114 +19,113 @@
 
 (defn chord-set
   "Returns all chords within a given tonic / scale."
-  [tonic scale]
+  [scale tonic]
   (let [note-ct (count (u/scale-intervals scale))
-        combine-keywords (u/fwhen [& keywords]
-                           (->> keywords (map name) (apply str) keyword))
         pitched-scale (b/pitch-scale tonic scale)]
     (for [shape (u/chord-shapes note-ct)
-          degree (range 1 (inc note-ct))]
+          degree (range 1 (inc note-ct))
+          inversion (range (count shape))]
       (let [notes (u/base-chord tonic scale shape degree)
             root (pitched-scale (dec degree))
-            pitched-chord (b/pitch-chord tonic scale shape degree)]
-        {:scale scale :tonic tonic :notes notes :root root
-         :pitches pitched-chord
-         :type (combine-keywords root (u/chord-type notes))}))))
+            pitches (b/pitch-chord tonic scale shape degree)
+            type (u/chord-type notes)]
+        {:scale scale :tonic tonic
+         :notes (g/invert notes inversion)
+         :pitches (u/rotate pitches inversion)
+         :type (if (nil? type) "" (str root (name type)))}))))
+
+(defn- filter-chords
+  [scales prev-chord target-color]
+  (mapcat (fn [scale]
+         (->> (b/scale-brightness scale)
+              (- (b/scale-brightness (:scale prev-chord)))
+              (+ (Math/round (double (* 5 target-color))))
+              (b/fifths-above (:tonic prev-chord))
+              (chord-set scale)))
+          scales))
 
 (defn- normalize-dissonance
-  "Within given scales, normalizes dissonance values from 0 to 1 for each chord."
+  "With a set of scales, returns a function that takes in a dissonance value and
+   outputs a normalized dissonance value from 0 to 1."
   [scales]
-  (let [filtered (select-keys d/scale-dissonance scales)
-        dissonance-vals (clojure.core/flatten (vals filtered))
+  (let [dissonance-vals (->> scales
+                             (mapcat #(chord-set % "C"))
+                             (map :notes)
+                             (map d/chord-dissonance))
         min-dissonance (apply min dissonance-vals)
         max-dissonance (apply max dissonance-vals)
         diff (- max-dissonance min-dissonance)]
-    (u/map-vals (fn [vals]
-                  (map #(-> % (- min-dissonance) (/ diff)) vals))
-                filtered)))
+    (fn [dissonance] (-> dissonance (- min-dissonance) (/ diff)))))
 
-(defn- find-scale
-  "Finds a scale that corresponds to a target dissonance, and a tonic that
-  corresponds to a target color."
-  [scales prev-chord target-color target-dissonance]
-  (let [scale (first (u/min-by #(u/abs-diff target-dissonance (u/avg (second %)))
-                               (normalize-dissonance scales)))
-        tonic (->> (b/scale-brightness scale)
-                   (- (b/scale-brightness (:scale prev-chord)))
-                   (+ (Math/round (double (* 5 target-color))))
-                   (b/fifths-above (:tonic prev-chord)))]
-    [tonic scale]))
+(defn- next-chord
+  "With a set of scales, returns a function that finds an appropriate following
+   chord from the previous chord and a set of tensions."
+  [scales]
+  (let [normalize-dissonance (normalize-dissonance scales)]
+    (fn [prev tension]
+      (let [tension #?(:clj tension
+                       :cljs (js->clj tension :keywordize-keys :true))
+            {:keys [color dissonance gravity]} tension
+            chords (filter-chords scales prev color)
+            score-color (fn [chord]
+                          (->> (:pitches chord)
+                               (b/chord-color (:pitches prev))
+                               (#(/ % 5))
+                               (u/abs-diff color)))
+            color-scores (map score-color chords)
+            score-dissonance (comp (partial u/abs-diff dissonance)
+                                   normalize-dissonance
+                                   d/chord-dissonance
+                                   :notes)
+            dissonance-scores (map score-dissonance chords)
+            score-gravity (fn [chord]
+                            (when-let [g (g/chord-gravity (:notes prev)
+                                                          (:notes chord))]
+                              (max (- gravity g) 0)))
+            gravity-scores (map score-gravity chords)]
+        (apply-scores [color-scores dissonance-scores gravity-scores]
+                      chords)))))
 
 (defn generate-progression
   "Generates a set of chords that matches tension curves within the given scales."
-  ([tensions scales] (generate-progression tensions scales :C))
+  ([tensions scales] (generate-progression tensions scales "C"))
   ([tensions scales start-tonic]
-   (reductions (fn [prev tension]
-                 (let [tension #?(:clj tension
-                                  :cljs (js->clj tension :keywordize-keys :true))
-                       {:keys [color dissonance gravity]} tension
-                       [tonic scale] (find-scale scales prev color dissonance)
-                       chords (chord-set tonic scale)
-                       score-color (fn [chord]
-                                     (->> (:pitches chord)
-                                          (b/chord-color (:pitches prev))
-                                          (#(/ % 5))
-                                          (u/abs-diff color)))
-                       color-scores (map score-color chords)
-                       score-dissonance (partial u/abs-diff dissonance)
-                       dissonance-scores (map score-dissonance
-                                              (scale (normalize-dissonance scales)))
-                       score-gravity (fn [chord]
-                                       (when-let [g (g/chord-gravity (:notes prev)
-                                                                     (:notes chord))]
-                                         (max (- gravity g) 0)))
-                       gravity-scores (map score-gravity chords)]
-                   (apply-scores [color-scores dissonance-scores gravity-scores]
-                                 chords)))
-               (first (chord-set start-tonic (first scales)))
-               tensions)))
+   (let [scales #?(:clj scales
+                   :cljs (map keyword scales))]
+     (reductions (next-chord scales)
+                 (first (chord-set (first scales) start-tonic))
+                 tensions))))
 
 (defn voice-progression
-  "Implement proper voice leading in a progression.
-  If any note is below midi 60 or above midi 80, invert the chord."
   [progression]
-  (let [constrain-voicing (fn [notes]
-                            (cond (< (apply min notes) 60) (g/invert notes 1)
-                                  (< 80 (apply max notes)) (g/invert notes -1)
-                                  :else notes))
-        voice-notes (fn [prev-chord chord]
-                      (->> (:notes prev-chord)
-                           (#(g/voice-lead % (:notes chord)))
-                           constrain-voicing
+  (let [voice-chord (fn [chord octave]
+                      (->> (:notes chord)
+                           g/compress
+                           (map (partial + (* octave 12)))
                            (assoc chord :notes)))
-        voice-pitches (fn [chord]
-                        (->> (:notes chord)
-                             (g/inversion (u/pitch->midi (:root chord)))
-                             (u/rotate (:pitches chord))
-                             (assoc chord :pitches)))
-        initial-chord (->> (:notes (first progression))
-                           (map (partial + 60))
-                           constrain-voicing
-                           (assoc (first progression) :notes)
-                           voice-pitches)]
-    (reductions (comp voice-pitches voice-notes)
-                initial-chord
+        optimal-voicing (fn [prev chord]
+                          (->> '(5 6) ; valid octaves
+                               (map (partial voice-chord chord))
+                               (map :notes)
+                               (u/max-by (partial g/chord-gravity (:notes prev)))
+                               (assoc chord :notes)))]
+    (reductions optimal-voicing
+                (voice-chord (first progression) 5)
                 (rest progression))))
 
 (defn clean-progression [progression]
   {:post [(= (map (comp count :pitches) %)
              (map (comp count :notes) %))]}
-  (let [dedupe-chord (fn [chord]
-                       (->> (select-keys chord [:notes :pitches])
-                            (u/map-vals distinct)
-                            (into chord)))
-        add-pitch (fn [{:keys [pitches notes] :as chord}]
-                    (if (not= (count pitches) (count notes))
-                      (assoc chord :pitches (conj (vec pitches)
-                                                  (first pitches)))
-                      chord))]
-    (->> progression
-         (map dedupe-chord)
-         (map add-pitch))))
+  (map (fn [chord]
+         (->> (select-keys chord [:notes :pitches])
+              (u/map-vals dedupe)
+              (into chord)))
+       progression))
 
-(def main (comp clean-progression voice-progression generate-progression))
+(def main (comp voice-progression generate-progression))
+
+(time (main [{:color 0 :dissonance 0 :gravity 0}
+             {:color 0.4 :dissonance 0.6 :gravity 0}
+             {:color 0 :dissonance 0.4 :gravity 0.4}
+             {:color 0.5 :dissonance 0.25 :gravity 0}]
+            [:lydian :melodic-minor :diminished]))

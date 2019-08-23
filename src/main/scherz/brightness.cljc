@@ -5,7 +5,7 @@
 (defn valid-direction? [direction]
   (or (= direction :asc) (= direction :desc)))
 
-(defn shift-pitch
+(defn- shift-pitch
   "Sharpens or flattens a pitch based on direction."
   ([direction pitch]
    {:pre [(valid-direction? direction)]}   
@@ -27,13 +27,12 @@
   ([note] (fifths note :asc))
   ([note direction]
    {:pre [(valid-direction? direction)]}   
-   (let [note (name note)
-         index-fn (if (= direction :asc) inc dec)
+   (let [index-fn (if (= direction :asc) inc dec)
          note-fn (partial shift-pitch direction)
          new-index (index-fn (pitch-indexes (first note)))
          new-note (-> (mod new-index 7) base-circle (str (subs note 1))
                       (#(if (<= 0 new-index 6) % (note-fn %))))]
-     (lazy-seq (cons (keyword note) (fifths new-note direction))))))
+     (lazy-seq (cons note (fifths new-note direction))))))
 
 (defn scale-brightness
   "Assigns each note in a scale a level of brightness based on its position in the
@@ -52,15 +51,15 @@
       scale-brightness)))
 
 (defn circle-of-fifths
-  "Generates a circle of fifths given a root and a scale.
+  "Generates a circle of fifths given a tonic and a scale.
   If the scale is bright the tritone is placed above the root, otherwise below."
-  ([root] (circle-of-fifths root :major))
-  ([root scale]
+  ([tonic] (circle-of-fifths tonic :major))
+  ([tonic scale]
    (let [bright? (pos? (scale-brightness scale))
          upper-arc (take (if bright? 6 5)
-                         (drop 1 (fifths root)))
+                         (drop 1 (fifths tonic)))
          lower-arc (take (if bright? 6 7)
-                         (fifths root :desc))]
+                         (fifths tonic :desc))]
      (into upper-arc lower-arc))))
 
 (defn pitch-scale
@@ -90,9 +89,8 @@
   "Measures a pitch's brightness based on its position in the circle of fifths.
   More useful as a relative measure - arbitrarily F has a brightness of 0."
   [pitch]
-  (let [p (name pitch)
-        counts (frequencies p)]
-    (+ (.indexOf base-circle (first p))
+  (let [counts (frequencies pitch)]
+    (+ (.indexOf base-circle (first pitch))
        (* 7 (get counts \# 0))
        (* -7 (get counts \b 0)))))
 
