@@ -115,7 +115,7 @@
        (max darkness-difference 0))))
 
 (defn fifths-above
-  [root n]
+  [n root]
   (->> (if (pos? n) :asc :desc)
        (fifths root)
        (drop (abs n))
