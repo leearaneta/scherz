@@ -30,7 +30,7 @@
             pitches (b/pitch-chord tonic scale shape degree)
             type (u/chord-type notes)]
         {:scale scale :tonic tonic :inversion inversion
-         :notes (g/invert notes inversion)
+         :notes (u/invert notes inversion)
          :pitches (u/rotate pitches inversion)
          :type (if (nil? type) "" (str root (name type)))}))))
 
@@ -102,6 +102,7 @@
                  tensions))))
 
 (defn voice-progression
+  "Places every chord in a progression between octaves 5 and 6."
   [progression]
   (let [voice-chord (fn [chord octave]
                       (->> (:notes chord)
@@ -109,7 +110,7 @@
                            (map (partial + (* octave 12)))
                            (assoc chord :notes)))
         optimal-voicing (fn [prev chord]
-                          (->> '(5 6) ; valid octaves
+                          (->> '(5 6)
                                (map (partial voice-chord chord))
                                (map :notes)
                                (u/max-by (partial g/chord-gravity (:notes prev)))
@@ -118,10 +119,12 @@
                 (voice-chord (first progression) 5)
                 (rest progression))))
 
-(defn clean-progression [progression]
+(defn clean-progression
+  "Dedupes pitches and notes in a chord progression."
+  [progression]
   (map (fn [chord]
          (->> (select-keys chord [:notes :pitches])
-              (u/map-vals dedupe)
+              (u/map-vals (fn [_ v] (dedupe v)))
               (into chord)))
        progression))
 

@@ -116,4 +116,21 @@
           coll))
 
 (defn map-vals [f m]
-  (into {} (for [[k v] m] [k (f v)])))
+  (into {} (for [[k v] m] [k (f k v)])))
+
+(defn- invert-asc [notes]
+  (sort (cons (+ (first notes) 12)
+              (next notes))))
+
+(defn- invert-desc [notes]
+  (sort (cons (- (last notes) 12)
+              (next (reverse notes)))))
+
+(defn invert
+  [notes shift]
+  (cond
+    (zero? shift) notes
+    (pos? shift) (recur (invert-asc notes) (dec shift))
+    (neg? shift) (recur (invert-desc notes) (inc shift))))
+
+(def scales (keys scale-intervals))
