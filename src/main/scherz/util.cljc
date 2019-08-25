@@ -37,14 +37,11 @@
 
 (def scale-intervals
   (let [ionian-sequence  [2 2 1 2 2 2 1]]
-    {:diatonic           ionian-sequence
-     :ionian             (rotate ionian-sequence 0)
-     :major              (rotate ionian-sequence 0)
+    {:major              (rotate ionian-sequence 0)
      :dorian             (rotate ionian-sequence 1)
      :phrygian           (rotate ionian-sequence 2)
      :lydian             (rotate ionian-sequence 3)
      :mixolydian         (rotate ionian-sequence 4)
-     :aeolian            (rotate ionian-sequence 5)
      :minor              (rotate ionian-sequence 5)
      :locrian            (rotate ionian-sequence 6)
      :harmonic-minor     [2 1 2 2 1 3 1]
@@ -65,11 +62,11 @@
 (def chord-types
   {:M      [0 4 7 12]
    :m      [0 3 7 12]
-   :d      [0 3 6 12]
+   :°      [0 3 6 12]
    :M7     [0 4 7 11]
    :D7     [0 4 7 10]
    :m7     [0 3 7 10]
-   :d7     [0 3 6 9]
+   :°7     [0 3 6 9]
    :mM7    [0 3 7 11]
    :dM7    [0 3 6 11]
    :7sus2  [0 2 7 10]

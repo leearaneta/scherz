@@ -47,7 +47,7 @@
   "Assigns each note in a scale a level of brightness based on its position in the
   circle of fifths relative to the root, and adds them all up.  The tritone can be
   -6 or 6, and is inferred based on the brightness of the rest of the scale."
-  ([scale tonic] (+ (scale-brightness scale) (pitch-brightness tonic)))
+  ([tonic scale] (+ (scale-brightness scale) (pitch-brightness tonic)))
   ([scale]
    (let [cumulative-intervals (reductions + (scale-intervals scale))
          note-ct (count cumulative-intervals)
