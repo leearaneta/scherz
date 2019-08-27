@@ -19,7 +19,7 @@
 
 (defn chord-set
   "Returns all chords within a given tonic / scale."
-  [scale tonic]
+  [tonic scale]
   (let [note-ct (count (u/scale-intervals scale))
         pitched-scale (b/pitch-scale tonic scale)]
     (for [shape (u/chord-shapes note-ct)
@@ -29,19 +29,25 @@
             root (pitched-scale (dec degree))
             pitches (b/pitch-chord tonic scale shape degree)
             type (u/chord-type notes)]
-        {:scale scale :tonic tonic
-         :notes (g/invert notes inversion)
+        {:scale scale :tonic tonic :inversion inversion :type type
+         :notes (u/invert notes inversion)
          :pitches (u/rotate pitches inversion)
-         :type (if (nil? type) "" (str root (name type)))}))))
+         :name (if (nil? type) "" (str root (name type)))}))))
 
 (defn- filter-chords
+  "Creates a set of chords to choose from according to target color."
+  ; for some reason for comprehension doesn't flatten all the way
   [scales prev-chord target-color]
   (mapcat (fn [scale]
-         (->> (b/scale-brightness scale)
-              (- (b/scale-brightness (:scale prev-chord)))
-              (+ (Math/round (double (* 5 target-color))))
-              (b/fifths-above (:tonic prev-chord))
-              (chord-set scale)))
+            (let [target-color (Math/round (double (* 5 target-color)))
+                  fs (if (= target-color 0) [+] [+ -])]
+              (mapcat (fn [f]
+                        (-> (b/scale-brightness scale)
+                            (f target-color)
+                            (- (b/scale-brightness (:scale prev-chord)))
+                            (b/fifths-above (:tonic prev-chord))
+                            (chord-set scale)))
+                      fs)))
           scales))
 
 (defn- normalize-dissonance
@@ -49,7 +55,7 @@
    outputs a normalized dissonance value from 0 to 1."
   [scales]
   (let [dissonance-vals (->> scales
-                             (mapcat #(chord-set % "C"))
+                             (mapcat (partial chord-set "C"))
                              (map :notes)
                              (map d/chord-dissonance))
         min-dissonance (apply min dissonance-vals)
@@ -57,75 +63,90 @@
         diff (- max-dissonance min-dissonance)]
     (fn [dissonance] (-> dissonance (- min-dissonance) (/ diff)))))
 
-(defn- next-chord
-  "With a set of scales, returns a function that finds an appropriate following
-   chord from the previous chord and a set of tensions."
+(defn- generate-chord
+  [scales prev {:keys [color dissonance gravity]}]
+  (let [normalize-dissonance (normalize-dissonance scales)
+        chords (filter-chords scales prev color)
+        score-color (fn [chord]
+                      (->> (:pitches chord)
+                           (b/chord-color (:pitches prev))
+                           (#(/ % 5))
+                           (u/abs-diff color)))
+        color-scores (map score-color chords)
+        score-dissonance (comp (partial u/abs-diff dissonance)
+                               normalize-dissonance
+                               d/chord-dissonance
+                               :notes)
+        dissonance-scores (map score-dissonance chords)
+        score-gravity (fn [chord]
+                        (when-let [g (g/chord-gravity (g/compress (:notes prev))
+                                                      (:notes chord))]
+                          (max (- gravity g) 0)))
+        gravity-scores (map score-gravity chords)]
+    (apply-scores [color-scores dissonance-scores gravity-scores] chords)))
+
+(defn transfer-chord
+  "Moves notes in a chord by the given amount of octaves."
+  [octave notes]
+  (map (partial + (* octave 12))
+       (g/compress notes)))
+
+(defn- voice-chord
+  "Given a previous chord, moves notes in a chord between octaves 5 and 6 depending
+   on which voicing is closer."
+  [prev chord]
+  (->> '(5 6)
+       (map (fn [octave] (transfer-chord octave (:notes chord))))
+       (u/max-by (partial g/chord-gravity (:notes prev)))
+       (assoc chord :notes)))
+
+(defn- clean-chord
+  "Dedupes pitches and notes in a chord."
+  [chord]
+  (->> (select-keys chord [:notes :pitches])
+       (u/map-vals (fn [_ v] (dedupe v)))
+       (into chord)))
+
+(defn next-chord
+  [scales prev tension]
+  (let [scales #?(:clj scales :cljs (map keyword scales))
+        prev #?(:clj prev :cljs (js->clj prev :keywordize-keys :true))
+        tension #?(:clj tension :cljs (js->clj tension :keywordize-keys :true))]
+    (->> (generate-chord scales prev tension)
+         (voice-chord prev)
+         clean-chord)))
+
+(defn possible-types
+  "Outputs all possible chord types given a set of scales."
   [scales]
-  (let [normalize-dissonance (normalize-dissonance scales)]
-    (fn [prev tension]
-      (let [tension #?(:clj tension
-                       :cljs (js->clj tension :keywordize-keys :true))
-            {:keys [color dissonance gravity]} tension
-            chords (filter-chords scales prev color)
-            score-color (fn [chord]
-                          (->> (:pitches chord)
-                               (b/chord-color (:pitches prev))
-                               (#(/ % 5))
-                               (u/abs-diff color)))
-            color-scores (map score-color chords)
-            score-dissonance (comp (partial u/abs-diff dissonance)
-                                   normalize-dissonance
-                                   d/chord-dissonance
-                                   :notes)
-            dissonance-scores (map score-dissonance chords)
-            score-gravity (fn [chord]
-                            (when-let [g (g/chord-gravity (:notes prev)
-                                                          (:notes chord))]
-                              (max (- gravity g) 0)))
-            gravity-scores (map score-gravity chords)]
-        (apply-scores [color-scores dissonance-scores gravity-scores]
-                      chords)))))
+  (->> scales
+       (map keyword)
+       (mapcat (fn [scale]
+                 (let [note-ct (count (u/scale-intervals scale))]
+                   (for [shape (u/chord-shapes note-ct)
+                         degree (range 1 (inc note-ct))]
+                     (u/chord-type (u/base-chord "C" scale shape degree))))))
+       distinct
+       (remove nil?)))
+
+(defn initial-chord
+  [scales root type]
+  {:pre [(some #(= % (keyword type)) (possible-types scales))]}
+  (let [chord (->> scales
+                   (map keyword)
+                   (mapcat (partial chord-set root))
+                   (filter (fn [chord] (= (:type chord) (keyword type))))
+                   first)]
+    (->> (:notes chord) (transfer-chord 5) (assoc chord :notes))))
 
 (defn generate-progression
-  "Generates a set of chords that matches tension curves within the given scales."
-  ([tensions scales] (generate-progression tensions scales "C"))
-  ([tensions scales start-tonic]
-   (let [scales #?(:clj scales
-                   :cljs (map keyword scales))]
-     (reductions (next-chord scales)
-                 (first (chord-set (first scales) start-tonic))
-                 tensions))))
+  "Repeatedly calls next-chord to generate a chord progression."
+  ([scales tensions]
+   (generate-progression scales tensions "C"))
+  ([scales tensions root]
+   (generate-progression scales tensions root (first (possible-types scales))))
+  ([scales tensions root type]
+   (reductions (partial next-chord scales)
+               (initial-chord scales root type)
+               tensions)))
 
-(defn voice-progression
-  [progression]
-  (let [voice-chord (fn [chord octave]
-                      (->> (:notes chord)
-                           g/compress
-                           (map (partial + (* octave 12)))
-                           (assoc chord :notes)))
-        optimal-voicing (fn [prev chord]
-                          (->> '(5 6) ; valid octaves
-                               (map (partial voice-chord chord))
-                               (map :notes)
-                               (u/max-by (partial g/chord-gravity (:notes prev)))
-                               (assoc chord :notes)))]
-    (reductions optimal-voicing
-                (voice-chord (first progression) 5)
-                (rest progression))))
-
-(defn clean-progression [progression]
-  {:post [(= (map (comp count :pitches) %)
-             (map (comp count :notes) %))]}
-  (map (fn [chord]
-         (->> (select-keys chord [:notes :pitches])
-              (u/map-vals dedupe)
-              (into chord)))
-       progression))
-
-(def main (comp voice-progression generate-progression))
-
-(time (main [{:color 0 :dissonance 0 :gravity 0}
-             {:color 0.4 :dissonance 0.6 :gravity 0}
-             {:color 0 :dissonance 0.4 :gravity 0.4}
-             {:color 0.5 :dissonance 0.25 :gravity 0}]
-            [:lydian :melodic-minor :diminished]))

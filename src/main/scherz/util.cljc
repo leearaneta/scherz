@@ -31,20 +31,17 @@
   (Math/floor n))
 
 (def chord-shapes
-  {6 [[0 2 4 6] [0 1 2 4]]
+  {6 [[0 2 4 6] [0 2 4 5]]
    7 [[0 2 4 7] [0 2 4 6] [0 1 4 6] [0 3 4 6] [0 1 2 4]]
    8 [[0 2 4 6] [0 2 4 7]]})
 
 (def scale-intervals
   (let [ionian-sequence  [2 2 1 2 2 2 1]]
-    {:diatonic           ionian-sequence
-     :ionian             (rotate ionian-sequence 0)
-     :major              (rotate ionian-sequence 0)
+    {:major              (rotate ionian-sequence 0)
      :dorian             (rotate ionian-sequence 1)
      :phrygian           (rotate ionian-sequence 2)
      :lydian             (rotate ionian-sequence 3)
      :mixolydian         (rotate ionian-sequence 4)
-     :aeolian            (rotate ionian-sequence 5)
      :minor              (rotate ionian-sequence 5)
      :locrian            (rotate ionian-sequence 6)
      :harmonic-minor     [2 1 2 2 1 3 1]
@@ -65,18 +62,20 @@
 (def chord-types
   {:M      [0 4 7 12]
    :m      [0 3 7 12]
-   :d      [0 3 6 12]
+   :°      [0 3 6 12]
+   :+      [0 4 8 12]
    :M7     [0 4 7 11]
    :D7     [0 4 7 10]
    :m7     [0 3 7 10]
-   :d7     [0 3 6 9]
+   :°7     [0 3 6 9]
+   :ø7     [0 3 6 10]
+   :+7     [0 4 8 10]
    :mM7    [0 3 7 11]
-   :dM7    [0 3 6 11]
+   :°M7    [0 3 6 11]
    :7sus2  [0 2 7 10]
    :7sus4  [0 5 7 10]
    :M7sus2 [0 2 7 11]
    :M7sus4 [0 5 7 11]
-   :m7-5   [0 3 6 10]
    :Madd2  [0 2 4 7]
    :madd2  [0 2 3 7]})
 
@@ -116,4 +115,21 @@
           coll))
 
 (defn map-vals [f m]
-  (into {} (for [[k v] m] [k (f v)])))
+  (into {} (for [[k v] m] [k (f k v)])))
+
+(defn- invert-asc [notes]
+  (sort (cons (+ (first notes) 12)
+              (next notes))))
+
+(defn- invert-desc [notes]
+  (sort (cons (- (last notes) 12)
+              (next (reverse notes)))))
+
+(defn invert
+  [notes shift]
+  (cond
+    (zero? shift) notes
+    (pos? shift) (recur (invert-asc notes) (dec shift))
+    (neg? shift) (recur (invert-desc notes) (inc shift))))
+
+(def scales (keys scale-intervals))

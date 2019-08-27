@@ -34,21 +34,31 @@
                       (#(if (<= 0 new-index 6) % (note-fn %))))]
      (lazy-seq (cons note (fifths new-note direction))))))
 
+(defn pitch-brightness
+  "Measures a pitch's brightness based on its position in the circle of fifths.
+  More useful as a relative measure - arbitrarily F has a brightness of 0."
+  [pitch]
+  (let [counts (frequencies pitch)]
+    (+ (pitch-indexes (first pitch))
+       (* 7 (get counts \# 0))
+       (* -7 (get counts \b 0)))))
+
 (defn scale-brightness
   "Assigns each note in a scale a level of brightness based on its position in the
   circle of fifths relative to the root, and adds them all up.  The tritone can be
   -6 or 6, and is inferred based on the brightness of the rest of the scale."
-  [scale]
-  (let [cumulative-intervals (reductions + (scale-intervals scale))
-        note-ct (count cumulative-intervals)
-        interval-brightness [0 -5 2 -3 4 -1 0 1 -4 3 -2 5 0]
-        scale-brightness (avg (map interval-brightness
-                                   cumulative-intervals))]
-    (if (some #(= 6 %) cumulative-intervals)
-      (if (pos? scale-brightness)
-        (+ scale-brightness (/ 6 note-ct))
-        (- scale-brightness (/ 6 note-ct)))
-      scale-brightness)))
+  ([tonic scale] (+ (scale-brightness scale) (pitch-brightness tonic)))
+  ([scale]
+   (let [cumulative-intervals (reductions + (scale-intervals scale))
+         note-ct (count cumulative-intervals)
+         interval-brightness [0 -5 2 -3 4 -1 0 1 -4 3 -2 5 0]
+         scale-brightness (avg (map interval-brightness
+                                    cumulative-intervals))]
+     (if (some #(= 6 %) cumulative-intervals)
+       (if (pos? scale-brightness)
+         (+ scale-brightness (/ 6 note-ct))
+         (- scale-brightness (/ 6 note-ct)))
+       scale-brightness))))
 
 (defn circle-of-fifths
   "Generates a circle of fifths given a tonic and a scale.
@@ -85,15 +95,6 @@
        (take (inc (last chord-shape)))
        (#(map (vec %) chord-shape))))
 
-(defn pitch-brightness
-  "Measures a pitch's brightness based on its position in the circle of fifths.
-  More useful as a relative measure - arbitrarily F has a brightness of 0."
-  [pitch]
-  (let [counts (frequencies pitch)]
-    (+ (.indexOf base-circle (first pitch))
-       (* 7 (get counts \# 0))
-       (* -7 (get counts \b 0)))))
-
 (defn chord-color
   "Computes how much more 'colorful' chords are in relation to each other.
 
@@ -115,8 +116,14 @@
        (max darkness-difference 0))))
 
 (defn fifths-above
-  [root n]
+  [n root]
   (->> (if (pos? n) :asc :desc)
        (fifths root)
        (drop (abs n))
        first))
+
+(defn fifths-between [source-pitch target-pitch]
+  (let [diff (- (pitch-brightness target-pitch)
+                (pitch-brightness source-pitch))
+        direction (if (pos? diff) :asc :desc)]
+    (take (inc diff) (fifths source-pitch direction))))
