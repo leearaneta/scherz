@@ -7,10 +7,10 @@
  :dependencies
  []
 
- :builds {}
- ;; {:scherz {:target :node-library
-;;           :output-to "out/scherz/lib.js"
-;;           :exports {:generate scherz.exports/generate
-;;                     :scales scherz.exports/scales}}}
-}
+ :builds {:scherz {:target :node-library
+           :output-to "out/scherz/lib.js"
+           :exports {:util scherz.exports/util
+                     :brightness scherz.exports/brightness
+                     :dissonance scherz.exports/dissonance
+                     :generate scherz.exports/generate}}}}
 

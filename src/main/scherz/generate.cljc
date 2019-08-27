@@ -35,8 +35,8 @@
          :name (if (nil? type) "" (str root (name type)))}))))
 
 (defn- filter-chords
+  "Creates a set of chords to choose from according to target color."
   ; for some reason for comprehension doesn't flatten all the way
-  ; TODO: reimplement this with scale-brightness of higher arity
   [scales prev-chord target-color]
   (mapcat (fn [scale]
             (let [target-color (Math/round (double (* 5 target-color)))
@@ -108,7 +108,6 @@
        (into chord)))
 
 (defn next-chord
-  "Returns the next chord in a progression given scale choices and target tension."
   [scales prev tension]
   (let [scales #?(:clj scales :cljs (map keyword scales))
         prev #?(:clj prev :cljs (js->clj prev :keywordize-keys :true))
@@ -132,6 +131,7 @@
 
 (defn initial-chord
   [scales root type]
+  {:pre [(some #(= % (keyword type)) (possible-types scales))]}
   (let [chord (->> scales
                    (map keyword)
                    (mapcat (partial chord-set root))
@@ -140,7 +140,7 @@
     (->> (:notes chord) (transfer-chord 5) (assoc chord :notes))))
 
 (defn generate-progression
-  "Generates a set of chords that matches tension curves within the given scales."
+  "Repeatedly calls next-chord to generate a chord progression."
   ([scales tensions]
    (generate-progression scales tensions "C"))
   ([scales tensions root]
@@ -150,7 +150,3 @@
                (initial-chord scales root type)
                tensions)))
 
-(let [scales [:lydian :melodic-minor]
-      initial (initial-chord scales "F" :M7)
-      tension {:color 0.25 :dissonance 0.4 :gravity 0}]
-  (next-chord scales (next-chord scales initial tension) tension))
