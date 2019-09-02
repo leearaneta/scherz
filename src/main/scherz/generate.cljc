@@ -63,8 +63,13 @@
         diff (- max-dissonance min-dissonance)]
     (fn [dissonance] (-> dissonance (- min-dissonance) (/ diff)))))
 
+(defn- valid-tension? [{:keys [color dissonance gravity]}]
+  (every? #(<= 0 % 1) [color dissonance gravity]))
+
 (defn- generate-chord
-  [scales prev {:keys [color dissonance gravity]}]
+  [scales prev {:keys [color dissonance gravity] :as tension}]
+  {:pre [(every? u/valid-scale? scales)
+         (valid-tension? tension)]}
   (let [normalize-dissonance (normalize-dissonance scales)
         chords (filter-chords scales prev color)
         score-color (fn [chord]
@@ -119,6 +124,7 @@
 (defn possible-types
   "Outputs all possible chord types given a set of scales."
   [scales]
+  {:pre [(every? u/valid-scale? scales)]}
   (->> scales
        (map keyword)
        (mapcat (fn [scale]
@@ -129,9 +135,14 @@
        distinct
        (remove nil?)))
 
+(defn- possible-type? [scales type]
+  (some #(= % (keyword type)) (possible-types scales)))
+
 (defn initial-chord
   [scales root type]
-  {:pre [(some #(= % (keyword type)) (possible-types scales))]}
+  {:pre [(every? u/valid-scale? scales)
+         (b/valid-pitch? root)
+         (possible-type? scales type)]}
   (let [chord (->> scales
                    (map keyword)
                    (mapcat (partial chord-set root))
@@ -149,4 +160,3 @@
    (reductions (partial next-chord scales)
                (initial-chord scales root type)
                tensions)))
-

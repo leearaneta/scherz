@@ -59,6 +59,11 @@
      :diminished2        [2 1 2 1 2 1 2 1]
      :augmented          [2 2 2 2 2 2]}))
 
+(def scales (keys scale-intervals))
+
+(defn valid-scale? [scale]
+  (some #(= % scale) scales))
+
 (def chord-types
   {:M      [0 4 7 12]
    :m      [0 3 7 12]
@@ -78,6 +83,7 @@
    :M7sus4 [0 5 7 11]
    :Madd2  [0 2 4 7]
    :madd2  [0 2 3 7]})
+
 
 (defn chord-type [notes]
   (first (filter (fn [k] (= (k chord-types)
@@ -132,4 +138,3 @@
     (pos? shift) (recur (invert-asc notes) (dec shift))
     (neg? shift) (recur (invert-desc notes) (inc shift))))
 
-(def scales (keys scale-intervals))

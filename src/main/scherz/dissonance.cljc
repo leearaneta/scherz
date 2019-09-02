@@ -79,4 +79,3 @@
                            (invert inversion)
                            chord-dissonance)))))
             scale-intervals))
-
