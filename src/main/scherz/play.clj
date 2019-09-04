@@ -22,4 +22,3 @@
       type "M7"
       progression (generate-progression scales tensions root type)]
   (play-progression progression))
-
