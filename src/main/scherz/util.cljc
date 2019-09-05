@@ -36,28 +36,33 @@
    8 [[0 2 4 6] [0 2 4 7]]})
 
 (def scale-intervals
-  (let [ionian-sequence  [2 2 1 2 2 2 1]]
-    {:major              (rotate ionian-sequence 0)
-     :dorian             (rotate ionian-sequence 1)
-     :phrygian           (rotate ionian-sequence 2)
-     :lydian             (rotate ionian-sequence 3)
-     :mixolydian         (rotate ionian-sequence 4)
-     :minor              (rotate ionian-sequence 5)
-     :locrian            (rotate ionian-sequence 6)
-     :harmonic-minor     [2 1 2 2 1 3 1]
-     :melodic-minor-asc  [2 1 2 2 2 2 1]
-     :super-locrian      [1 2 1 2 2 2 2]
-     :neapolitan-major   [1 2 2 2 2 2 1]
-     :locrian-major      [2 2 1 1 2 2 2]
-     :neapolitan-minor   [1 2 2 2 1 3 1]
-     :harmonic-major     [2 2 1 2 1 3 1]
-     :melodic-minor-desc [2 1 2 2 1 2 2]
-     :melodic-minor      [2 1 2 2 2 2 1]
-     :melodic-major      [2 2 1 2 1 2 2]
-     :lydian-minor       [2 2 2 1 1 2 2]
-     :diminished         [1 2 1 2 1 2 1 2]
-     :diminished2        [2 1 2 1 2 1 2 1]
-     :augmented          [2 2 2 2 2 2]}))
+  (let [ionian-sequence     [2 2 1 2 2 2 1]]
+    {:major                 (rotate ionian-sequence 0)
+     :dorian                (rotate ionian-sequence 1)
+     :phrygian              (rotate ionian-sequence 2)
+     :lydian                (rotate ionian-sequence 3)
+     :mixolydian            (rotate ionian-sequence 4)
+     :minor                 (rotate ionian-sequence 5)
+     :locrian               (rotate ionian-sequence 6)
+     :harmonic-minor        [2 1 2 2 1 3 1]
+     :melodic-minor-asc     [2 1 2 2 2 2 1]
+     :super-locrian         [1 2 1 2 2 2 2]
+     :neapolitan-major      [1 2 2 2 2 2 1]
+     :locrian-major         [2 2 1 1 2 2 2]
+     :neapolitan-minor      [1 2 2 2 1 3 1]
+     :harmonic-major        [2 2 1 2 1 3 1]
+     :melodic-minor-desc    [2 1 2 2 1 2 2]
+     :melodic-minor         [2 1 2 2 2 2 1]
+     :melodic-major         [2 2 1 2 1 2 2]
+     :lydian-minor          [2 2 2 1 1 2 2]
+     :half-whole-diminished [1 2 1 2 1 2 1 2]
+     :whole-half-diminished [2 1 2 1 2 1 2 1]
+     :augmented             [2 2 2 2 2 2]}))
+
+(def scales (keys scale-intervals))
+
+(defn valid-scale? [scale]
+  (some #(= % scale) scales))
 
 (def chord-types
   {:M      [0 4 7 12]
@@ -78,6 +83,7 @@
    :M7sus4 [0 5 7 11]
    :Madd2  [0 2 4 7]
    :madd2  [0 2 3 7]})
+
 
 (defn chord-type [notes]
   (first (filter (fn [k] (= (k chord-types)
@@ -132,4 +138,3 @@
     (pos? shift) (recur (invert-asc notes) (dec shift))
     (neg? shift) (recur (invert-desc notes) (inc shift))))
 
-(def scales (keys scale-intervals))

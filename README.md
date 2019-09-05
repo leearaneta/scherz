@@ -11,7 +11,7 @@ scherz can generate chord progressions using color, dissonance, and gravity
 `generateProgression` takes in four parameters:
   - a list of objects, each object with keys `color` `consonance` and `gravity`
     - each value corresponding to these keys must be between 0 and 1
-  - a list of scales to choose chords from, `["lydian" "diminished"]` for example
+  - a list of scales to choose chords from, `["lydian", "diminished"]` for example
   - an optional start tonic, defaults to "C"
   - the type of the initial chord, defaults to :i of the first scale given
   
