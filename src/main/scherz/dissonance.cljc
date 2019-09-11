@@ -1,6 +1,6 @@
 (ns scherz.dissonance
   (:require [scherz.util :refer [map-vals chord-shapes base-chord
-                                 scale-intervals invert floor avg]]))
+                                 scale-intervals note-invert floor avg]]))
 
 (defn exp [x n]
   (reduce * (repeat n x)))
@@ -76,6 +76,6 @@
                            shape (chord-shapes note-ct)
                            inversion (range (count shape))]
                        (-> (base-chord "C" scale shape degree)
-                           (invert inversion)
+                           (note-invert inversion)
                            chord-dissonance)))))
             scale-intervals))
