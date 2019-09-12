@@ -18,7 +18,6 @@
                 {:color 0.2 :dissonance 0.8 :gravity 0}
                 {:color 0 :dissonance 1 :gravity 0}
                 {:color 0.15 :dissonance 0.15 :gravity 0.15}]
-      root "C"
-      type "M7"
-      progression (generate-progression scales tensions root type)]
+      options {:root "C" :type "M7" :seed 0}
+      progression (generate-progression scales tensions options)]
   (play-progression progression))

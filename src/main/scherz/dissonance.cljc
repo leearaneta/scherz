@@ -1,6 +1,7 @@
 (ns scherz.dissonance
-  (:require [scherz.util :refer [map-vals chord-shapes base-chord
-                                 scale-intervals invert floor avg]]))
+  (:require [scherz.util :refer [floor avg]]
+            [scherz.chord :refer [chord-set]]
+            [scherz.scale :refer [scales]]))
 
 (defn exp [x n]
   (reduce * (repeat n x)))
@@ -10,22 +11,12 @@
     a
     (recur b (mod a b))))
 
-(defn multiply-ratio
-  [{numerator :numerator :as ratio} scalar]
-  (into ratio
-        {:numerator (* numerator scalar)}))
-
+; using objects with numerator / denominator since cljs doesn't support ratios
 (def freq-ratios
-  (let [base-ratios [[1 1] [25 24] [9 8] [6 5] [5 4] [4 3]
-                     [45 32] [3 2] [8 5] [5 3] [9 5] [15 8]]
-        add-octaves (fn [[index ratio]]
-                      (->> (/ index 12) floor (exp 2) (multiply-ratio ratio)))]
-    (->> (cycle base-ratios)
-         (take (* (count base-ratios) 8))
-         (map (fn [[n d]] {:numerator n :denominator d}))
-         (map vector (range))
-         (map add-octaves)
-         vec)))
+  (let [base-ratios [[1 1] [25 24] [9 8] [6 5] [5 4] [4 3] [45 32]
+                     [3 2] [8 5] [5 3] [9 5] [15 8] [2 1]]]
+    (vec (map (fn [[n d]] {:numerator n :denominator d})
+              base-ratios))))
 
 (defn- chord->ratios
   "Converts a set of notes into frequency ratios above the lowest note.
@@ -70,12 +61,27 @@
        inc))
 
 (def scale-dissonance
-  (map-vals (fn [scale intervals]
-              (let [note-ct (count intervals)]
-                (avg (for [degree (range 1 (inc note-ct))
-                           shape (chord-shapes note-ct)
-                           inversion (range (count shape))]
-                       (-> (base-chord "C" scale shape degree)
-                           (invert inversion)
-                           chord-dissonance)))))
-            scale-intervals))
+  (->> scales
+       (map (partial chord-set "C"))
+       (map (fn [chords]
+              (->> chords
+                   (map :notes)
+                   (map chord-dissonance)
+                   avg)))
+       (map vector scales)
+       (into {})))
+
+(defn normalize-dissonance
+  "With a set of scales, returns a function that takes in a dissonance value and
+   outputs a normalized dissonance value from 0 to 1."
+  [scales]
+  (let [dissonance-vals (->> scales
+                             (mapcat (partial chord-set "C"))
+                             (map :notes)
+                             (map chord-dissonance))
+        min-dissonance (apply min dissonance-vals)
+        max-dissonance (apply max dissonance-vals)
+        diff (- max-dissonance min-dissonance)]
+    (fn [dissonance] (-> dissonance (- min-dissonance) (/ diff)))))
+
+(chord-dissonance '(0 3 6 9))

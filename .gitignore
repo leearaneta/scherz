@@ -3,3 +3,5 @@ out/
 package.json
 package-lock.json
 .shadow-cljs/
+native/
+target/

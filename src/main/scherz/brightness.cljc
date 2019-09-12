@@ -1,6 +1,7 @@
 (ns scherz.brightness
-  (:require [clojure.string :refer [ends-with?]])
-  (:require [scherz.util :refer [abs avg scale-intervals floor valid-scale?]]))
+  (:require [clojure.string :refer [ends-with?]]
+            [scherz.util :refer [abs avg floor]]
+            [scherz.scale :refer [scale-intervals valid-scale?]]))
 
 (defn valid-direction? [direction]
   (or (= direction :asc) (= direction :desc)))

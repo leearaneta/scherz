@@ -1,13 +1,15 @@
 (ns scherz.exports
-  (:require [scherz.util :refer [scales]])
-  (:require [scherz.brightness :refer [pitch-brightness scale-brightness
+  (:require [scherz.scale :refer [scales]]
+            [scherz.brightness :refer [pitch-brightness scale-brightness
                                        circle-of-fifths
-                                       fifths-between fifths-above]])
-  (:require [scherz.dissonance :refer [chord-dissonance scale-dissonance]])  
-  (:require [scherz.generate :refer [initial-chord next-chord
-                                     generate-progression possible-types]]))
+                                       fifths-between fifths-above]]
+            [scherz.dissonance :refer [chord-dissonance scale-dissonance]]
+            [scherz.chord :refer [possible-chord-types]]
+            [scherz.generate :refer [initial-chord next-chord
+                                     generate-progression]]))
 
-(def util #js {:scales (clj->js scales)})
+(def util #js {:scales (clj->js scales)
+               :possibleChordTypes (comp clj->js possible-chord-types)})
 (def brightness #js {:pitchBrightness pitch-brightness
                      :scaleBrightness scale-brightness
                      :circleOfFifths (comp clj->js circle-of-fifths)
@@ -15,8 +17,6 @@
                      :fifthsAbove fifths-above})
 (def dissonance #js {:chordDissonance chord-dissonance
                      :scaleDissonance (clj->js scale-dissonance)})
-(def generate #js {:possibleTypes (comp clj->js possible-types)
-                   :initialChord (comp clj->js initial-chord)
+(def generate #js {:initialChord (comp clj->js initial-chord)
                    :nextChord (comp clj->js next-chord)
                    :generateProgression (comp clj->js generate-progression)})
-
