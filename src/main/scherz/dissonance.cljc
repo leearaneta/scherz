@@ -18,7 +18,7 @@
     (vec (map (fn [[n d]] {:numerator n :denominator d})
               base-ratios))))
 
-(defn- chord->ratios
+(defn- chord-ratios
   "Converts a set of notes into frequency ratios above the lowest note.
   (chord->ratios '(0 4 7)) -> [5/4 3/2]"
   [notes]
@@ -52,7 +52,8 @@
 (defn chord-dissonance
   "Measures dissonance of a chord based on Euler's Gradus Suavitatis."
   [notes]
-  (->> (chord->ratios notes)
+  (->> notes
+       chord-ratios
        lcm-of-ratios
        prime-factors
        frequencies
@@ -83,5 +84,3 @@
         max-dissonance (apply max dissonance-vals)
         diff (- max-dissonance min-dissonance)]
     (fn [dissonance] (-> dissonance (- min-dissonance) (/ diff)))))
-
-(chord-dissonance '(0 3 6 9))

@@ -25,28 +25,30 @@
 (defn floor [n]
   (Math/floor n))
 
+(defn min-by-coll
+  [f coll]
+  (loop [elems []
+         min infinity
+         coll coll]
+    (if (empty? coll)
+      (do
+        (when (< 1 (count elems)) (print (str (count elems) " possibilities\n")))
+        elems)
+      (let [curr (first coll)
+            compare (f curr)]
+        (cond (< compare min)
+              (recur [curr] compare (rest coll))
+              (= compare min)
+              (recur (conj elems curr) min (rest coll))
+              :else
+              (recur elems min (rest coll)))))))
+
 (defn min-by
-  ([f coll] (min-by 0 f coll))
-  ([seed f coll]
-   (loop [elems []
-          min infinity
-          coll coll]
-     (if (empty? coll)
-       (do
-         (when (< 1 (count elems)) (print (str (count elems) " possibilities\n")))
-         (get elems (mod seed (count elems)) nil))
-       (let [curr (first coll)
-             compare (f curr)]
-         (cond (< compare min)
-               (recur [curr] compare (rest coll))
-               (= compare min)
-               (recur (conj elems curr) min (rest coll))
-               :else
-               (recur elems min (rest coll))))))))
+  ([f coll] (get (min-by-coll f coll) 0 nil)))
 
 (defn max-by [f coll]
   (let [inverse (fn [v] (/ 1 v))]
-   (min-by (comp inverse f) coll)))
+    (min-by (comp inverse f) coll)))
 
 (defn map-vals [f m]
   (into {} (for [[k v] m] [k (f k v)])))

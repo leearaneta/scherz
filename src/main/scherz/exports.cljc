@@ -5,7 +5,7 @@
                                        fifths-between fifths-above]]
             [scherz.dissonance :refer [chord-dissonance scale-dissonance]]
             [scherz.chord :refer [possible-chord-types]]
-            [scherz.generate :refer [initial-chord next-chord
+            [scherz.generate :refer [initial-chord generate-chords
                                      generate-progression]]))
 
 (def util #js {:scales (clj->js scales)
@@ -18,5 +18,5 @@
 (def dissonance #js {:chordDissonance chord-dissonance
                      :scaleDissonance (clj->js scale-dissonance)})
 (def generate #js {:initialChord (comp clj->js initial-chord)
-                   :nextChord (comp clj->js next-chord)
+                   :generateChords (comp clj->js generate-chords)
                    :generateProgression (comp clj->js generate-progression)})

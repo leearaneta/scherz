@@ -1,5 +1,5 @@
 (ns scherz.gravity
-  (:require [scherz.util :refer [abs avg]]))
+  (:require [scherz.util :refer [abs avg min-by]]))
 
 (defn condense
   ([notes] (condense notes 12))

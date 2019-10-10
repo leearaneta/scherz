@@ -31,4 +31,4 @@
 (def scales (keys scale-intervals))
 
 (defn valid-scale? [scale]
-  (some #(= % scale) scales))
+  (some (partial = (keyword scale)) scales))
