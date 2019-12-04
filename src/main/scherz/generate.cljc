@@ -10,15 +10,15 @@
 (defn- apply-scores
   "Picks a chord that has the lowest combined score."
   [chords & flist]
-  (let [combine-scores (fn [& scores]
+  (let [combine-scores (fn [scores]
                          (reduce (u/fwhen [a b] (+ a b)) scores))
         cost (fn [[_ score]]
                (if (nil? score) u/infinity score))]
-    (->> flist
-         (map (fn [f] (map f chords)))
-         (apply map combine-scores)
-         (map vector chords)
-         (u/min-by-coll cost)
+    (->> chords
+         (map (apply juxt flist)) ; apply each scoring function to every chord
+         (map combine-scores) ; combine individual scores for each chord
+         (map vector chords) ; get tuples of [chord score]
+         (u/min-by-coll cost) ; choose chord(s) with lowest scores
          (map first))))
 
 (defn- compress [notes]
@@ -38,25 +38,27 @@
   [prev chord]
   (->> '(4 5 6)
        (map (fn [octave] (transfer-chord octave (:notes chord))))
-       (filter (fn [notes] (every? #(<= 58 % 82) notes)))
+       (filter (partial every? #(<= 58 % 82)))
        (u/max-by (partial g/chord-gravity (:notes prev)))
        (assoc chord :notes)))
 
 (defn- chord-sets
-  "Returns a list of chords that fall within the given scale and target color from
-   the previous chord."
-  [prev-chord target-color arc scale]
+  "Returns chords within the given scale and target color from the previous chord."
+  [prev-chord target-color curve scale]
   (let [target-color (Math/round (double (* 5 target-color)))
         fs (cond
-             (or (= target-color 0) (= arc :asc)) [+]
-             (= arc :desc) [-]
+             (or (= target-color 0) (= curve :asc)) [+]
+             (= curve :desc) [-]
              :else [+ -])]
     (mapcat (fn [f]
-              (-> (b/scale-brightness scale)
-                  (f target-color)
-                  (- (b/scale-brightness (:scale prev-chord)))
-                  (b/fifths-above (:tonic prev-chord))
-                  (c/chord-set scale)))
+              ; get total brightness of previous scale / tonic
+              (-> (b/scale-brightness (:scale prev-chord))
+                  (+ (b/pitch->brightness (:tonic prev-chord)))
+                  (f target-color) ; add or subtract target color
+                  ; isolate amount of brightness we need from new tonic
+                  (- (b/scale-brightness scale))
+                  b/brightness->pitch ; get new tonic
+                  (c/chord-set scale))) ; return chord set with tonic / scale
             fs)))
 
 (defn- valid-tension? [{:keys [color dissonance gravity]}]
@@ -69,17 +71,17 @@
   (let [scales #?(:clj scales :cljs (map keyword scales))
         prev #?(:clj prev :cljs (js->clj prev :keywordize-keys :true))
         tension #?(:clj tension :cljs (js->clj tension :keywordize-keys :true))
-        {:keys [color dissonance gravity arc]} tension
-        chords (mapcat (partial chord-sets prev color arc) scales)
+        {:keys [color dissonance gravity curve]} tension
+        chords (mapcat (partial chord-sets prev color curve) scales)
+        normalize-dissonance (d/normalize-dissonance scales)
         score-color (fn [chord]
-                      (->> (:pitches chord)
-                           (b/chord-color (:pitches prev))
-                           (#(/ % 5))
-                           (u/abs-diff color)))
-        score-dissonance (comp (partial u/abs-diff dissonance)
-                               (d/normalize-dissonance scales)
-                               d/chord-dissonance
-                               :notes)
+                      (-> (b/chord-color (:pitches prev) (:pitches chord))
+                          (/ 5)
+                          (u/abs-diff color)))
+        score-dissonance (fn [chord]
+                           (-> (d/chord-dissonance (:notes chord))
+                               normalize-dissonance
+                               (u/abs-diff dissonance)))
         score-gravity (fn [chord]
                         (when-let [g (g/chord-gravity (compress (:notes prev))
                                                       (:notes chord))]
@@ -88,6 +90,7 @@
          (apply-scores chords score-color score-dissonance score-gravity))))
 
 (defn initial-chord
+  "Finds the first chord of a certain type within the given scales."
   ([scales type] (initial-chord scales type "C"))
   ([scales type root]
    {:pre [(every? s/valid-scale? scales)
@@ -96,11 +99,12 @@
    (let [chord (->> scales
                     (map keyword)
                     (mapcat (partial c/chord-set root))
-                    (filter (fn [chord] (= (:type chord) (keyword type))))
-                    first)]
+                    (u/find-coll (fn [chord] (= (:type chord) (keyword type)))))]
      (->> (:notes chord) (transfer-chord 5) (assoc chord :notes)))))
 
 (defn- next-chord
+  "Finds the next chord of a progression within the given scales.
+   Seed is used if there is a tie between possible chord choices."
   ([scales prev tension] (next-chord 0 scales prev tension))
   ([seed scales prev tension]
    (let [chords (generate-chords scales prev tension)]

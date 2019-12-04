@@ -25,8 +25,10 @@
 (defn floor [n]
   (Math/floor n))
 
-(defn min-by-coll
-  [f coll]
+(defn find-coll [f coll]
+  (first (filter f coll)))
+
+(defn min-by-coll [f coll]
   (loop [elems []
          min infinity
          coll coll]
@@ -43,8 +45,8 @@
               :else
               (recur elems min (rest coll)))))))
 
-(defn min-by
-  ([f coll] (get (min-by-coll f coll) 0 nil)))
+(defn min-by [f coll]
+  (get (min-by-coll f coll) 0 nil))
 
 (defn max-by [f coll]
   (let [inverse (fn [v] (/ 1 v))]
@@ -52,3 +54,6 @@
 
 (defn map-vals [f m]
   (into {} (for [[k v] m] [k (f k v)])))
+
+(defn rotate [coll]
+  (cons (last coll) (drop-last coll)))
