@@ -1,7 +1,5 @@
 (ns scherz.dissonance
-  (:require [scherz.util :refer [floor avg]]
-            [scherz.chord :refer [chord-set]]
-            [scherz.scale :refer [scales]]))
+  (:require [scherz.chord :refer [base-chord-sets]]))
 
 (defn exp [x n]
   (reduce * (repeat n x)))
@@ -20,10 +18,10 @@
 
 (defn- chord-ratios
   "Converts a set of notes into frequency ratios above the lowest note.
-  (chord->ratios '(0 4 7)) -> [5/4 3/2]"
+  (chord->ratios '(0 4 7)) -> [1/1 5/4 3/2]"
   [notes]
   (map (fn [note]
-         (->> (first notes) (- note) freq-ratios))
+         (freq-ratios (- note (first notes))))
        notes))
 
 (defn- lcm [coll]
@@ -33,13 +31,11 @@
 
 (defn- lcm-of-ratios
   "Finds a least common multiple from a set of ratios.
-  Major triads have the ratios [5/4 3/2] which is equivalent to [5/4 6/4].
+  Major triads have the ratios [1/1 5/4 3/2] which is equivalent to [4/4 5/4 6/4].
   This is seen as a 4:5:6 which has a least common multiple of 60."
   [ratios]
-  (let [multiple (lcm (map :denominator ratios))
-        normalize-ratio (fn [{:keys [denominator numerator]}]
-                          (->> denominator (/ multiple) (* numerator)))]
-    (lcm (map normalize-ratio ratios))))
+  (let [multiple (lcm (map :denominator ratios))]
+    (->> ratios (map :numerator) (map (partial * multiple)) lcm)))
 
 (defn prime-factors
   ([n] (prime-factors 2 n))
@@ -61,26 +57,16 @@
        (reduce +)
        inc))
 
-(def scale-dissonance
-  (->> scales
-       (map (partial chord-set "C"))
-       (map (fn [chords]
-              (->> chords
-                   (map :notes)
-                   (map chord-dissonance)
-                   avg)))
-       (map vector scales)
-       (into {})))
-
 (defn normalize-dissonance
   "With a set of scales, returns a function that takes in a dissonance value and
    outputs a normalized dissonance value from 0 to 1."
   [scales]
   (let [dissonance-vals (->> scales
-                             (mapcat (partial chord-set "C"))
+                             (mapcat (partial base-chord-sets))
                              (map :notes)
                              (map chord-dissonance))
         min-dissonance (apply min dissonance-vals)
         max-dissonance (apply max dissonance-vals)
         diff (- max-dissonance min-dissonance)]
     (fn [dissonance] (-> dissonance (- min-dissonance) (/ diff)))))
+
