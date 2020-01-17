@@ -50,3 +50,15 @@
 
 (defn rotate [coll]
   (cons (last coll) (drop-last coll)))
+
+(defn insert [coll idx val]
+  (let [[before after] (map vec (split-at idx coll))]
+    (into (conj before val) after)))
+
+(defn distinct-by
+  ([f coll] (distinct-by f first coll))
+  ([f g coll]
+   (let [groups (group-by f coll)]
+     (->> (distinct (map f coll))
+          (map groups)
+          (map g)))))

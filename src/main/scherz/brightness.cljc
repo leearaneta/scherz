@@ -86,12 +86,12 @@
          rotate)))
 
 (defn pitch-chord
-  "(pitch-chord \"C\" :major [0 2 4] 2) -> (\"D\" \"F\" \"A\")"
+  "(pitch-chord \"C\" :major [0 2 4] 2) -> [\"D\" \"F\" \"A\"]"
   [tonic scale chord-shape degree]
   (->> (cycle (pitch-scale tonic scale))
        (drop (dec degree)) ; start scale from nth degree - 1
        (take (inc (last chord-shape))) ; trim scale
-       (#(map (vec %) chord-shape)))) ; apply chord shape to scale
+       (#(mapv (vec %) chord-shape))))
 
 (defn chord-color
   "Computes how much more 'colorful' chords are in relation to each other.

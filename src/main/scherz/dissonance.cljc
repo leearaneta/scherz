@@ -9,12 +9,23 @@
     a
     (recur b (mod a b))))
 
+
 ; using objects with numerator / denominator since cljs doesn't support ratios
 (def freq-ratios
-  (let [base-ratios [[1 1] [25 24] [9 8] [6 5] [5 4] [4 3] [45 32]
-                     [3 2] [8 5] [5 3] [9 5] [15 8] [2 1]]]
-    (vec (map (fn [[n d]] {:numerator n :denominator d})
-              base-ratios))))
+  (let [floor (fn [n] (Math/floor n))
+        multiply-ratio (fn [{numerator :numerator :as ratio} scalar]
+                         (into ratio
+                               {:numerator (* numerator scalar)}))
+        base-ratios [[1 1] [25 24] [9 8] [6 5] [5 4] [4 3]
+                     [45 32] [3 2] [8 5] [5 3] [9 5] [15 8]]
+        add-octaves (fn [[index ratio]]
+                      (->> (/ index 12) floor (exp 2) (multiply-ratio ratio)))]
+    (->> (cycle base-ratios)
+         (take (* (count base-ratios) 8))
+         (map (fn [[n d]] {:numerator n :denominator d}))
+         (map-indexed vector)
+         (map add-octaves)
+         vec)))
 
 (defn- chord-ratios
   "Converts a set of notes into frequency ratios above the lowest note.
