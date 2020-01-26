@@ -22,27 +22,6 @@
          (u/min-by-coll cost) ; choose chord(s) with lowest scores
          (map first))))
 
-(defn- compress [notes]
-  (if (some #(< % 12) notes)
-    notes
-    (recur (map #(- % 12) notes))))
-
-(defn transfer-chord
-  "Moves notes in a chord by the given amount of octaves."
-  [octave notes]
-  (map (partial + (* octave 12))
-       (compress notes)))
-
-(defn- voice-chord
-  "Given a previous chord, moves notes in a chord between 58 and 82 depending
-   on which voicing is closer."
-  [prev chord]
-  (->> '(4 5 6)
-       (map (fn [octave] (transfer-chord octave (:notes chord))))
-       (filter (partial every? #(<= 58 % 82)))
-       (u/max-by (partial g/chord-gravity (:notes prev)))
-       (assoc chord :notes)))
-
 (defn- chord-sets
   "Returns chords within the given scale and target color from the previous chord."
   [prev-chord target-color curve scale]
@@ -84,10 +63,10 @@
                                normalize-dissonance
                                (u/abs-diff dissonance)))
         score-gravity (fn [chord]
-                        (when-let [g (g/chord-gravity (compress (:notes prev))
+                        (when-let [g (g/chord-gravity (g/sink-octave (:notes prev))
                                                       (:notes chord))]
                           (max (- gravity g) 0)))]
-    (map (partial voice-chord prev)
+    (map (partial g/voice-chord prev)
          (apply-scores chords score-color score-dissonance score-gravity))))
 
 (defn initial-chord
@@ -97,11 +76,10 @@
    {:pre [(every? s/valid-scale? scales)
           (b/valid-pitch? root)
           (c/possible-chord-type? scales type)]}
-   (let [chord (->> scales
-                    (map keyword)
+   (let [chord (->> (map keyword scales)
                     (mapcat (partial c/chord-set root))
-                    (u/find-coll (fn [chord] (= (:type chord) (keyword type)))))]
-     (->> (:notes chord) (transfer-chord 5) (assoc chord :notes)))))
+                    (u/find-coll (comp (partial = type) :type)))]
+     (->> (:notes chord) (g/transfer-chord 5) (assoc chord :notes)))))
 
 (defn- next-chord
   "Finds the next chord of a progression within the given scales.
@@ -118,8 +96,9 @@
   (let [options #?(:clj options :cljs (js->clj options :keywordize-keys :true))
         {:keys [root type seed]
          :or {root "C"
-              type (first (c/possible-chord-types scales))
+              type (name (first (c/possible-chord-types scales)))
               seed 0}} options]
     (reductions (partial next-chord (int seed) scales)
                 (initial-chord scales type root)
                 tensions)))
+

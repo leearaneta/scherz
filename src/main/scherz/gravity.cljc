@@ -1,5 +1,5 @@
 (ns scherz.gravity
-  (:require [scherz.util :refer [avg abs-diff]]))
+  (:require [scherz.util :refer [avg abs-diff max-by infinity]]))
 
 (defn condense
   ([notes] (condense notes 12))
@@ -7,38 +7,84 @@
    (distinct (map #(mod % n) notes))))
 
 (defn note-invert
-  "(note-invert '(0 4 7 11) 2) -> '(7 11 12 16)"
+  "(note-invert [0 4 7 11] 2) -> [7 11 12 16]"
   [notes shift]
-  (let [first-note (if (= (count (condense notes)) 3)
-                     (+ (second notes) 12)
-                     (+ (first notes) 12))]
-    (if (zero? shift)
-      notes
-      (recur (->> first-note
-                  (conj (vec (next notes)))
-                  (apply list))
-             (dec shift)))))
+  (if (zero? shift)
+    notes
+    (recur (conj (subvec notes 1) (+ (first notes) 12))
+           (dec shift))))
 
 (defn pitch-invert
-  "(pitch-invert '(\"C\" \"E\" \"G\" \"C\")) -> '(\"E\" \"G\" \"C\" \"E\")"
+  "(pitch-invert [\"C\" \"E\" \"G\" \"C\"] 1) -> [\"E\" \"G\" \"C\" \"E\"]"
   [pitches shift]
-  (let [first-pitch (if (= (count (distinct pitches)) 3)
-                      (second pitches)
-                      (first pitches))]
-    (if (zero? shift)
-      pitches
-      (recur (->> first-pitch
-                  (conj (vec (next pitches)))
-                  (apply list))
-             (dec shift)))))
+  (if (zero? shift)
+    pitches
+    (recur (conj (subvec pitches 1) (first pitches))
+           (dec shift))))
 
 (defn chord-gravity
   "Measures, from 0 to 1, how spatially close two sets of notes are.
   More half step resolutions results in higher gravity."
   [source-notes target-notes]
-  (when (not= (condense source-notes) (condense target-notes))
+  (if (= (count source-notes) (count target-notes))
     (->> target-notes
          (map abs-diff source-notes)
          (filter (partial not= 0))
          (map (partial / 1))
-         avg)))
+         avg)
+    (let [[four-notes five-notes] (sort-by count [source-notes target-notes])]
+      (->> [(conj (vec four-notes) infinity) (conj four-notes infinity)]
+           (map (fn [notes] (map abs-diff five-notes notes)))
+           (apply map vector)
+           (map (partial apply min))
+           (filter (partial not= 0))
+           (map (partial / 1))
+           avg))))
+
+(defn sink-octave
+  "Brings a set of notes down to the lowest octave possible."
+  [notes]
+  (if (some #(< % 12) notes)
+    notes
+    (recur (map #(- % 12) notes))))
+
+(defn transfer-chord
+  "Moves notes in a chord by the given amount of octaves."
+  [octave notes]
+  (map (partial + (* octave 12))
+       (sink-octave notes)))
+
+(defn voice-chord
+  "Given a previous chord, moves notes in a chord between 58 and 82 depending
+   on which voicing is closer."
+  [prev chord]
+  (->> '(4 5 6)
+       (map (fn [octave] (transfer-chord octave (:notes chord))))
+       (filter (partial every? #(<= 38 % 82)))
+       (max-by (partial chord-gravity (:notes prev)))
+       (assoc chord :notes)))
+
+(defn open-voicing
+  "Raises the second note of a chord up an octave."
+  [chord]
+  (let [voice-notes (fn [notes]
+                      (if (= (count notes) 4)
+                        (-> notes
+                            (assoc 1 (notes 2))
+                            (assoc 2 (notes 3))
+                            (assoc 3 (+ 12 (notes 1))))
+                        (-> notes
+                            (assoc 1 (notes 2))
+                            (assoc 2 (+ 12 (notes 1))))))
+        voice-pitches (fn [pitches]
+                        (if (= (count pitches) 4)
+                          (-> pitches
+                              (assoc 1 (pitches 2))
+                              (assoc 2 (pitches 3))
+                              (assoc 3 (pitches 1)))
+                          (-> pitches
+                              (assoc 1 (pitches 2))
+                              (assoc 2 (pitches 1)))))]
+    (-> chord
+        (update :notes voice-notes)
+        (update :pitches voice-pitches))))
