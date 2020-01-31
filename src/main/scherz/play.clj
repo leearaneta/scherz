@@ -14,12 +14,11 @@
     (Thread/sleep 1000)))
 
 (let [scales [:lydian]
-      tensions [{:color 0.4 :dissonance 0.4 :gravity 0.2}
-                {:color 0.2 :dissonance 0.6 :gravity 0}
-                {:color 0 :dissonance 0.8 :gravity 0}
+      tensions [{:color 0.4 :dissonance 0.4 :gravity 0.15}
+                {:color 0.2 :dissonance 0.6 :gravity 0.15}
+                {:color 0 :dissonance 0.8 :gravity 0.15}
                 {:color 0.15 :dissonance 0.15 :gravity 0.15}]
-      options {:root "C" :seed 2}
+      options {:root "C" :seed 0}
       progression (generate-progression scales (cycle tensions) options)]
   (play-progression progression))
-
 

@@ -63,11 +63,10 @@
                                normalize-dissonance
                                (u/abs-diff dissonance)))
         score-gravity (fn [chord]
-                        (when-let [g (g/chord-gravity (g/sink-octave (:notes prev))
+                        (when-let [g (g/chord-gravity (:notes prev)
                                                       (:notes chord))]
                           (max (- gravity g) 0)))]
-    (map (partial g/voice-chord prev)
-         (apply-scores chords score-color score-dissonance score-gravity))))
+    (apply-scores chords score-color score-dissonance score-gravity)))
 
 (defn initial-chord
   "Finds the first chord of a certain type within the given scales."
@@ -76,10 +75,9 @@
    {:pre [(every? s/valid-scale? scales)
           (b/valid-pitch? root)
           (c/possible-chord-type? scales type)]}
-   (let [chord (->> (map keyword scales)
-                    (mapcat (partial c/chord-set root))
-                    (u/find-coll (comp (partial = type) :type)))]
-     (->> (:notes chord) (g/transfer-chord 5) (assoc chord :notes)))))
+   (->> (map keyword scales)
+        (mapcat (partial c/chord-set root))
+        (u/find-coll (comp (partial = type) :type)))))
 
 (defn- next-chord
   "Finds the next chord of a progression within the given scales.
@@ -101,4 +99,3 @@
     (reductions (partial next-chord (int seed) scales)
                 (initial-chord scales type root)
                 tensions)))
-
