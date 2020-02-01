@@ -5,7 +5,7 @@
             [scherz.brightness :refer [pitch->brightness pitch-scale
                                        pitch-chord fifths-above]]
             [scherz.gravity :refer [condense sink-octave open-voicing
-                                    note-invert pitch-invert]]))
+                                    note-invert pitch-invert transfer-octaves]]))
 
 (def chord-shapes
   "Mapping of scale lengths -> chord shapes (used to generate sets of chords).
@@ -107,7 +107,7 @@
                  :else 0))]
     (min-by cost chords)))
 
-(defn- any-consecutive? [notes]
+(defn- any-clustered-notes? [notes]
   (let [consecutive? (fn [pairs]
                        (->> pairs
                             (map (partial apply abs-diff))
@@ -126,6 +126,15 @@
   (and (<= 3 (- (second notes) (first notes)) 4)
        (or (< 5 (- (nth notes 2) (second notes)))
            (< 7 (- (nth notes 3) (nth notes 2))))))
+
+(defn- any-muddy-intervals? [notes]
+  (let [muddy? (fn [[from to]]
+                 (cond
+                   (< from 50) (< (- to from) 7)
+                   (< from 55) (< (- to from) 5)
+                   (< from 59) (< (- to from) 4)
+                   :else false))]
+    (some muddy? (partition 2 1 notes))))
 
 (defn- base-chord-set
   "Returns chords within a given scale in C."
@@ -148,7 +157,7 @@
          (mapcat (fn [chord] (conj (add-extensions chord) chord)))
          (distinct-by (comp sink-octave :notes) chord-priority)
          (remove (fn [chord] (= 3 (count (:notes chord)))))
-         (remove (comp any-consecutive? :notes))
+         (remove (comp any-clustered-notes? :notes))
          (remove (comp any-sevenths? :notes))
          (remove (comp negligible-bass? :notes)))))
 
@@ -164,19 +173,24 @@
    fall within the given tonic."
   [tonic scale]
   (let [brightness (dec (pitch->brightness tonic))
-        note (pitch->midi tonic)]
-    (map (fn [{:keys [root notes type pitches bass degree]}]
-           {:tonic tonic :scale scale
-            :notes (map (partial + note) notes)
-            :pitches (map (partial fifths-above brightness) pitches)
-            :type (when (and (some? type) (nil? bass))
-                    (str (name type) (when degree (str "add" degree))))
-            :name (if (nil? type) ""
-                      (-> (fifths-above brightness root)
-                          (str (name type))
-                          (str (when bass (str "/" (fifths-above brightness bass))))
-                          (str (when degree (str "add" degree)))))})
-         (scale base-chord-sets))))
+        note (min-by (partial abs-diff 0)
+                     [(pitch->midi tonic) (- (pitch->midi tonic) 12)])]
+    (->> (scale base-chord-sets)
+         (map (fn [{:keys [root notes type pitches bass degree]}]
+                {:tonic tonic :scale scale
+                 :notes (map (partial + note) notes)
+                 :pitches (map (partial fifths-above brightness) pitches)
+                 :type (when (and (some? type) (nil? bass))
+                         (str (name type) (when degree (str "add" degree))))
+                 :name (if (nil? type) ""
+                           (-> (fifths-above brightness root)
+                               (str (name type))
+                               (str (when bass
+                                      (str "/" (fifths-above brightness bass))))
+                               (str (when degree
+                                      (str "add" degree)))))}))
+         (mapcat transfer-octaves)
+         (remove (comp any-muddy-intervals? :notes)))))
 
 (defn possible-chord-types
   "Outputs all possible chord types given a set of scales."
@@ -194,4 +208,3 @@
 (defn possible-chord-type? [scales type]
   (some (partial = (keyword type))
         (possible-chord-types scales)))
-

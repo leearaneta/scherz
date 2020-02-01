@@ -48,21 +48,19 @@
     notes
     (recur (map #(- % 12) notes))))
 
-(defn transfer-chord
+(defn- transfer-chord
   "Moves notes in a chord by the given amount of octaves."
-  [octave notes]
+  [notes octave]
   (map (partial + (* octave 12))
        (sink-octave notes)))
 
-(defn voice-chord
-  "Given a previous chord, moves notes in a chord between 58 and 82 depending
-   on which voicing is closer."
-  [prev chord]
-  (->> '(4 5 6)
-       (map (fn [octave] (transfer-chord octave (:notes chord))))
-       (filter (partial every? #(<= 38 % 82)))
-       (max-by (partial chord-gravity (:notes prev)))
-       (assoc chord :notes)))
+(defn transfer-octaves [chord]
+  (->> '(3 4 5)
+       (map (partial transfer-chord (:notes chord)))
+       (filter (fn [notes]
+                 (and (<= 38 (first notes))
+                      (<= (last notes) 82))))
+       (map (partial assoc chord :notes))))
 
 (defn open-voicing
   "Raises the second note of a chord up an octave."
