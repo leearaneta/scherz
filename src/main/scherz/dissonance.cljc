@@ -1,5 +1,4 @@
-(ns scherz.dissonance
-  (:require [scherz.chord :refer [base-chord-sets]]))
+(ns scherz.dissonance)
 
 (defn exp [x n]
   (reduce * (repeat n x)))
@@ -26,12 +25,11 @@
                      [45 32] [3 2] [8 5] [5 3] [9 5] [15 8]]
         add-octaves (fn [[index ratio]]
                       (->> (/ index 12) floor (exp 2) (multiply-ratio ratio)))]
-    (->> (cycle base-ratios)
-         (take (* (count base-ratios) 8))
-         (map (fn [[n d]] {:numerator n :denominator d}))
-         (map-indexed vector)
-         (map add-octaves)
-         vec)))
+    (vec (->> (cycle base-ratios)
+              (take (* (count base-ratios) 8))
+              (map (fn [[n d]] {:numerator n :denominator d}))
+              (map-indexed vector)
+              (map add-octaves)))))
 
 (defn- chord-ratios
   "Converts a set of notes into frequency ratios above the lowest note.
@@ -68,16 +66,3 @@
        frequencies
        (map (fn [[prime exponent]] (* exponent (dec prime))))
        (reduce +)))
-
-(defn normalize-dissonance
-  "With a set of scales, returns a function that takes in a dissonance value and
-   outputs a normalized dissonance value from 0 to 1."
-  [scales]
-  (let [dissonance-vals (->> scales
-                             (mapcat (partial base-chord-sets))
-                             (map :notes)
-                             (map chord-dissonance))
-        min-dissonance (apply min dissonance-vals)
-        max-dissonance (apply max dissonance-vals)
-        diff (- max-dissonance min-dissonance)]
-    (fn [dissonance] (-> dissonance (- min-dissonance) (/ diff)))))

@@ -3,8 +3,7 @@
             [scherz.scale :as s]
             [scherz.gravity :as g]
             [scherz.brightness :as b]
-            [scherz.chord :as c]
-            [scherz.dissonance :as d]))
+            [scherz.chord :as c]))
 
 (defn- apply-scores
   "Picks a chord that has the lowest combined score."
@@ -44,6 +43,22 @@
 (defn- valid-tension? [{:keys [color dissonance gravity]}]
   (every? #(<= 0 % 1) [color dissonance gravity]))
 
+(def scale-dissonance
+  (reduce (fn [acc scale]
+            (let [dissonance-vals (map :dissonance (scale c/base-chord-sets))]
+              (assoc acc scale [(apply min dissonance-vals)
+                                (apply max dissonance-vals)])))
+          {} s/scales))
+
+(defn normalize-dissonance
+  "With a set of scales, returns a function that takes in a dissonance value and
+   outputs a normalized dissonance value from 0 to 1."
+  [dissonance scales]
+  (let [[min-vals max-vals] (apply map vector (map scale-dissonance scales)) 
+        min-dissonance (apply min min-vals)
+        max-dissonance (apply max max-vals)]
+    (-> dissonance (- min-dissonance) (/ (- max-dissonance min-dissonance)))))
+
 (defn generate-chords
   [scales prev tension]
   {:pre [(every? s/valid-scale? scales)
@@ -53,14 +68,13 @@
         tension #?(:clj tension :cljs (js->clj tension :keywordize-keys :true))
         {:keys [color dissonance gravity curve]} tension
         chords (mapcat (partial chord-sets prev color curve) scales)
-        normalize-dissonance (d/normalize-dissonance scales)
         score-color (fn [chord]
                       (-> (b/chord-color (:pitches prev) (:pitches chord))
                           (/ 5)
                           (u/abs-diff color)))
         score-dissonance (fn [chord]
-                           (-> (d/chord-dissonance (:notes chord))
-                               normalize-dissonance
+                           (-> (:dissonance chord)
+                               (normalize-dissonance scales)
                                (u/abs-diff dissonance)))
         score-gravity (fn [chord]
                         (when-let [g (g/chord-gravity (:notes prev)
@@ -84,7 +98,7 @@
    Seed is used if there is a tie between possible chord choices."
   ([scales prev tension] (next-chord 0 scales prev tension))
   ([seed scales prev tension]
-   (let [chords (generate-chords scales prev tension)]
+   (let [chords (time (generate-chords scales prev tension))]
      (get (vec chords)
           (mod seed (count chords))))))
 
