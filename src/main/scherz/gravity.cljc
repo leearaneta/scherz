@@ -1,5 +1,5 @@
 (ns scherz.gravity
-  (:require [scherz.util :refer [avg abs-diff max-by infinity]]))
+  (:require [scherz.util :refer [avg abs-diff infinity]]))
 
 (defn condense
   ([notes] (condense notes 12))
@@ -27,19 +27,17 @@
   More half step resolutions results in higher gravity."
   [source-notes target-notes]
   (if (= (count source-notes) (count target-notes))
-    (->> target-notes
-         (map abs-diff source-notes)
-         (filter (partial not= 0))
-         (map (partial / 1))
-         avg)
+    (avg (->> target-notes
+              (map abs-diff source-notes)
+              (filter (partial not= 0))
+              (map (partial / 1))))
     (let [[four-notes five-notes] (sort-by count [source-notes target-notes])]
-      (->> [(conj (vec four-notes) infinity) (conj four-notes infinity)]
-           (map (fn [notes] (map abs-diff five-notes notes)))
-           (apply map vector)
-           (map (partial apply min))
-           (filter (partial not= 0))
-           (map (partial / 1))
-           avg))))
+      (avg (->> [(conj (vec four-notes) infinity) (conj four-notes infinity)]
+                (map (fn [notes] (map abs-diff five-notes notes)))
+                (apply map vector)
+                (map (partial apply min))
+                (filter (partial not= 0))
+                (map (partial / 1)))))))
 
 (defn sink-octave
   "Brings a set of notes down to the lowest octave possible."

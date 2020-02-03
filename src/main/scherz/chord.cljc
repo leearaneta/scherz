@@ -5,7 +5,8 @@
             [scherz.brightness :refer [pitch->brightness pitch-scale
                                        pitch-chord fifths-above]]
             [scherz.gravity :refer [condense sink-octave open-voicing
-                                    note-invert pitch-invert transfer-octaves]]))
+                                    note-invert pitch-invert transfer-octaves]]
+            [scherz.dissonance :refer [chord-dissonance]]))
 
 (def chord-shapes
   "Mapping of scale lengths -> chord shapes (used to generate sets of chords).
@@ -124,8 +125,8 @@
 
 (defn- negligible-bass? [notes]
   (and (<= 3 (- (second notes) (first notes)) 4)
-       (or (< 5 (- (nth notes 2) (second notes)))
-           (< 7 (- (nth notes 3) (nth notes 2))))))
+       (or (< 6 (- (nth notes 2) (second notes)))
+           (< 8 (- (nth notes 3) (nth notes 2))))))
 
 (defn- any-muddy-intervals? [notes]
   (let [muddy? (fn [[from to]]
@@ -159,7 +160,9 @@
          (remove (fn [chord] (= 3 (count (:notes chord)))))
          (remove (comp any-clustered-notes? :notes))
          (remove (comp any-sevenths? :notes))
-         (remove (comp negligible-bass? :notes)))))
+         (remove (comp negligible-bass? :notes))
+         (map (fn [chord]
+                (assoc chord :dissonance (chord-dissonance (:notes chord))))))))
 
 (def base-chord-sets
   "Hashmap of base chord sets for all scales.
@@ -176,19 +179,19 @@
         note (min-by (partial abs-diff 0)
                      [(pitch->midi tonic) (- (pitch->midi tonic) 12)])]
     (->> (scale base-chord-sets)
-         (map (fn [{:keys [root notes type pitches bass degree]}]
-                {:tonic tonic :scale scale
+         (map (fn [{:keys [root notes type pitches bass degree dissonance]}]
+                {:tonic tonic :scale scale :dissonance dissonance
                  :notes (map (partial + note) notes)
                  :pitches (map (partial fifths-above brightness) pitches)
                  :type (when (and (some? type) (nil? bass))
                          (str (name type) (when degree (str "add" degree))))
-                 :name (if (nil? type) ""
-                           (-> (fifths-above brightness root)
-                               (str (name type))
-                               (str (when bass
-                                      (str "/" (fifths-above brightness bass))))
-                               (str (when degree
-                                      (str "add" degree)))))}))
+                 :name (when type
+                         (-> (fifths-above brightness root)
+                             (str (name type))
+                             (str (when bass
+                                    (str "/" (fifths-above brightness bass))))
+                             (str (when degree
+                                    (str "add" degree)))))}))
          (mapcat transfer-octaves)
          (remove (comp any-muddy-intervals? :notes)))))
 

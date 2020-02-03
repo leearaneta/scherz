@@ -100,16 +100,12 @@
   B is one level brighter than E in the circle of fifths, so
   '(\"G\" \"B\" \"E\") adds one unit of color to '(\"C\" \"E\" \"G\")."
   [source-pitches target-pitches]
-  (let [chord-brightness (fn [pitches]
-                           (map pitch->brightness pitches))
-        brightest-note (fn [pitches]
-                         (apply max (chord-brightness pitches)))
-        darkest-note (fn [pitches]
-                       (apply min (chord-brightness pitches)))
-        brightness-difference (- (brightest-note target-pitches)
-                                 (brightest-note source-pitches))
-        darkness-difference (- (darkest-note source-pitches)
-                               (darkest-note target-pitches))]
+  (let [source-brightness (map pitch->brightness source-pitches)
+        target-brightness (map pitch->brightness target-pitches)
+        brightness-difference (- (apply max target-brightness)
+                                 (apply max source-brightness))
+        darkness-difference (- (apply min source-brightness)
+                               (apply min target-brightness))]
     (+ (max brightness-difference 0)
        (max darkness-difference 0))))
 
