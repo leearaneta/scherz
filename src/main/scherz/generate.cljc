@@ -25,22 +25,26 @@
 
 (defn- chord-sets
   "Returns chords within the given scale and target color from the previous chord."
-  [prev-chord target-color curve scale]
+  [prev-chord target-color curve direction scale]
   (let [target-color (Math/round (double (* 5 target-color)))
-        fs (cond
-             (or (= target-color 0) (= curve :asc)) [+]
-             (= curve :desc) [-]
-             :else [+ -])]
-    (mapcat (fn [f]
-              ; get total brightness of previous scale / tonic
-              (-> (b/scale-brightness (:scale prev-chord))
-                  (+ (b/pitch->brightness (:tonic prev-chord)))
-                  (f target-color) ; add or subtract target color
-                  ; isolate amount of brightness we need from new tonic
-                  (- (b/scale-brightness scale))
-                  b/brightness->pitch ; get new tonic
-                  (c/chord-set scale))) ; return chord set with tonic / scale
-            fs)))
+        fcurves (cond
+                  (or (= target-color 0) (= (keyword curve) :asc)) [+]
+                  (= (keyword curve) :desc) [-]
+                  :else [+ -])
+        apply-curve (fn [fcurve]
+                      (-> (b/scale-brightness (:scale prev-chord))
+                             (+ (b/pitch->brightness (:tonic prev-chord)))
+                             (fcurve target-color) ; add or subtract target color
+                             ; isolate amount of brightness we need from new tonic
+                             (- (b/scale-brightness scale))
+                             b/brightness->pitch ; get new tonic
+                             (c/chord-set scale)))
+        chords (mapcat apply-curve fcurves)]
+    (if (some? direction)
+      (let [fdirection (if (= (keyword direction) :asc) neg? pos?)
+            centroid (u/avg (:notes prev-chord))]
+        (filter (comp fdirection (partial - centroid) u/avg :notes) chords))
+      chords)))
 
 (defn- valid-tension? [{:keys [color dissonance gravity]}]
   (every? #(<= 0 % 1) [color dissonance gravity]))
@@ -68,8 +72,8 @@
   (let [scales #?(:clj scales :cljs (map keyword scales))
         prev #?(:clj prev :cljs (js->clj prev :keywordize-keys :true))
         tension #?(:clj tension :cljs (js->clj tension :keywordize-keys :true))
-        {:keys [color dissonance gravity curve]} tension
-        chords (mapcat (partial chord-sets prev color curve) scales)
+        {:keys [color dissonance gravity curve direction]} tension
+        chords (mapcat (partial chord-sets prev color curve direction) scales)
         brightness-extent (u/extent (map b/pitch->brightness (:pitches prev)))
         score-color (fn [chord]
                       (-> (apply (:fcolor chord) brightness-extent)
@@ -83,19 +87,20 @@
                         (when-let [g (g/chord-gravity (:notes prev)
                                                       (:notes chord))]
                           (max (- gravity g) 0)))]
-    (map (fn [chord] (dissoc chord :bass :type :fcolor))
+    (map (fn [chord] (dissoc chord :root :bass :type :fcolor))
          (apply-scores chords score-color score-dissonance score-gravity))))
 
 (defn initial-chord
   "Finds the first chord of a certain type within the given scales."
   ([scales type] (initial-chord scales type "C"))
-  ([scales type root]
+  ([scales type tonic]
    {:pre [(every? s/valid-scale? scales)
-          (b/valid-pitch? root)
+          (b/valid-pitch? tonic)
           (c/possible-chord-type? scales type)]}
-   (->> (map keyword scales)
-        (mapcat (partial c/chord-set root))
-        (u/find-coll (comp (partial = type) :type)))))
+   (dissoc (->> (map keyword scales)
+                (mapcat (partial c/chord-set tonic))
+                (u/find-coll (comp (partial = type) :type)))
+           :root :bass :type :fcolor)))
 
 (defn- next-chord
   "Finds the next chord of a progression within the given scales.
