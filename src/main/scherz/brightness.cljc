@@ -1,6 +1,6 @@
 (ns scherz.brightness
   (:require [clojure.string :refer [join]]
-            [scherz.util :refer [abs rotate]]
+            [scherz.util :refer [abs rotate extent]]
             [scherz.scale :refer [scale-intervals scales valid-scale?]]))
 
 (defn valid-direction? [direction]
@@ -93,21 +93,17 @@
        (take (inc (last chord-shape))) ; trim scale
        (#(mapv (vec %) chord-shape))))
 
-(defn chord-color
+(defn fcolor
   "Computes how much more 'colorful' chords are in relation to each other.
 
   The C Major triad's brightest note is E and the G major triad's brightest is B. 
   B is one level brighter than E in the circle of fifths, so
   '(\"G\" \"B\" \"E\") adds one unit of color to '(\"C\" \"E\" \"G\")."
-  [source-pitches target-pitches]
-  (let [source-brightness (map pitch->brightness source-pitches)
-        target-brightness (map pitch->brightness target-pitches)
-        brightness-difference (- (apply max target-brightness)
-                                 (apply max source-brightness))
-        darkness-difference (- (apply min source-brightness)
-                               (apply min target-brightness))]
-    (+ (max brightness-difference 0)
-       (max darkness-difference 0))))
+  [target-pitches]
+  (let [[darkest brightest] (extent (map pitch->brightness target-pitches))]
+    (fn [source-darkest source-brightest]
+      (+ (max (- brightest source-brightest) 0)
+         (max (- source-darkest darkest) 0)))))
 
 (defn fifths-above
   "Returns a pitch n fifths above the given pitch.
@@ -125,4 +121,3 @@
                 (pitch->brightness source-pitch))
         direction (if (pos? diff) :asc :desc)]
     (take (inc diff) (fifths source-pitch direction))))
-

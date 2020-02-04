@@ -4,7 +4,7 @@
             [scherz.util :refer [find-coll insert abs-diff min-by distinct-by]]
             [scherz.scale :refer [scales scale-intervals valid-scale?]]
             [scherz.brightness :refer [pitch->brightness pitch-scale
-                                       pitch-chord fifths-above]]
+                                       pitch-chord fifths-above fcolor]]
             [scherz.gravity :refer [condense sink-octave open-voicing
                                     note-invert pitch-invert transfer-octaves]]
             [scherz.dissonance :refer [chord-dissonance]]))
@@ -153,7 +153,8 @@
                    {:scale scale :tonic "C" :root root
                     :type type :inversion inversion
                     :pitches (pitch-invert pitches inversion)
-                    :notes (note-invert notes inversion)}))]
+                    :notes (note-invert notes inversion)
+                    :fcolor (fcolor pitches)}))]
     (->> chords
          (mapcat (fn [chord] [chord (open-voicing chord)]))
          (mapcat (fn [chord] (conj (add-extensions chord) chord)))
@@ -180,19 +181,21 @@
         note (min-by (partial abs-diff 0)
                      [(pitch->midi tonic) (- (pitch->midi tonic) 12)])]
     (->> (scale base-chord-sets)
-         (r/map (fn [{:keys [root notes type pitches bass degree dissonance]}]
-                  {:tonic tonic :scale scale :dissonance dissonance
-                   :notes (map (partial + note) notes)
-                   :pitches (map (partial fifths-above brightness) pitches)
-                   :type (when (and (some? type) (nil? bass))
-                           (str (name type) (when degree (str "add" degree))))
-                   :name (when type
-                           (-> (fifths-above brightness root)
-                               (str (name type))
-                               (str (when bass
-                                      (str "/" (fifths-above brightness bass))))
-                               (str (when degree
-                                      (str "add" degree)))))}))
+         (r/map (fn [{:keys [root notes type pitches bass degree] :as chord}]
+                  (conj chord
+                        {:tonic tonic :scale scale
+                         :notes (map (partial + note) notes)
+                         :pitches (map (partial fifths-above brightness) pitches)
+                         :type (when (and (some? type) (nil? bass))
+                                 (str (name type) (when degree (str "add" degree))))
+                         :name (when type
+                                 (-> (fifths-above brightness root)
+                                     (str (name type))
+                                     (str (when bass
+                                            (str "/" (fifths-above brightness
+                                                                   bass))))
+                                     (str (when degree
+                                            (str "add" degree)))))})))
          (r/mapcat transfer-octaves)
          (r/remove (comp any-muddy-intervals? :notes))
          r/foldcat)))
