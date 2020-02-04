@@ -33,7 +33,7 @@
               (map (partial / 1))))
     (let [[four-notes five-notes] (sort-by count [source-notes target-notes])]
       (avg (->> [(conj (vec four-notes) infinity) (conj four-notes infinity)]
-                (map (fn [notes] (map abs-diff five-notes notes)))
+                (map (partial map abs-diff five-notes))
                 (apply map vector)
                 (map (partial apply min))
                 (filter (partial not= 0))
@@ -53,12 +53,13 @@
        (sink-octave notes)))
 
 (defn transfer-octaves [chord]
-  (->> '(3 4 5)
-       (map (partial transfer-chord (:notes chord)))
-       (filter (fn [notes]
-                 (and (<= 42 (first notes))
-                      (<= (last notes) 78))))
-       (map (partial assoc chord :notes))))
+  (let [within-range? (fn [notes]
+                        (and (<= 40 (first notes))
+                             (<= (last notes) 80)))]
+    (->> '(3 4 5)
+         (map (partial transfer-chord (:notes chord)))
+         (filter within-range?)
+         (map (partial assoc chord :notes)))))
 
 (defn open-voicing
   "Raises the second note of a chord up an octave."

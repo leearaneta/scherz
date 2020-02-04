@@ -1,10 +1,12 @@
 (ns scherz.chord
   (:require [clojure.core.reducers :as r]
             [clojure.set :refer [difference]]
-            [scherz.util :refer [find-coll insert abs-diff min-by distinct-by]]
+            [clojure.math.combinatorics :refer [combinations]]
+            [scherz.util :refer [find-coll insert abs-diff
+                                 min-by distinct-by extent]]
             [scherz.scale :refer [scales scale-intervals valid-scale?]]
             [scherz.brightness :refer [pitch->brightness pitch-scale
-                                       pitch-chord fifths-above fcolor]]
+                                       pitch-chord fifths-above]]
             [scherz.gravity :refer [condense sink-octave open-voicing
                                     note-invert pitch-invert transfer-octaves]]
             [scherz.dissonance :refer [chord-dissonance]]))
@@ -18,7 +20,7 @@
       [0 3 4] [0 3 4 6]]
    8 [[0 2 4] [0 2 4 6] [0 2 4 7] [0 2 5] [0 2 5 7]]})
 
-(defn pitch->midi [pitch]
+(defn- pitch->midi [pitch]
   (let [notes {\C 0 \D 2 \E 4 \F 5 \G 7 \A 9 \B 11}
         multiplier (if (= \# (last pitch)) 1 -1)]
     (-> (dec (count pitch))       ; find the amount of sharps or flats
@@ -26,7 +28,7 @@
         (+ (notes (first pitch))) ; add to base value
         (mod 12))))
 
-(defn base-notes
+(defn- base-notes
   "(base-notes :major [0 2 4 6] 2) -> [2 5 9 12]
    Returns midi notes from the given scale / shape at the nth scale degree."
   ([scale chord-shape degree] (base-notes "C" scale chord-shape degree))
@@ -38,6 +40,13 @@
         (#(mapv (vec %) chord-shape))
         (mapv (partial + 12)))))
 
+(defn- note-distance [target-note source-note]
+  (cond (<= 12 (- target-note source-note))
+        (recur (- target-note 12) source-note)
+        (< target-note source-note)
+        (recur target-note (- source-note 12))
+        :else (- target-note source-note)))
+
 (def chord-types
   "Mapping of chord types to midi notes (starting at 0)."
   {:M      [0 4 7]
@@ -45,7 +54,7 @@
    :°      [0 3 6]
    :+      [0 4 8]
    :M7     [0 4 7 11]
-   :D7     [0 4 7 10]
+   :7      [0 4 7 10]
    :m7     [0 3 7 10]
    :°7     [0 3 6 9]
    :ø7     [0 3 6 10]
@@ -65,19 +74,30 @@
                            (map #(- % (first notes)) notes)))
              (keys chord-types)))
 
+(def extensions
+  {1 "b2" 2 "2"
+   3 "3" 4 "3"
+   5 "4"
+   6 "b5" 7 "5"
+   8 "6" 9 "6"
+   10 "b7" 11 "7"
+   13 "b9" 14 "9"
+   15 "10" 16 "10"
+   17 "11"
+   18 "b12" 19 "12"
+   20 "13" 21 "13"
+   22 "b7" 23 "7"})
+
 (defn- add-extension
-  [{:keys [notes pitches tonic scale root] :as chord} [pitch note]]
+  [{:keys [notes pitches root] :as chord} [pitch note]]
   (let [new-notes (vec (sort (conj notes note)))
         new-pitches (insert pitches (.indexOf new-notes note) pitch)
-        pitched-scale (pitch-scale tonic scale)
-        degree (inc (.indexOf (drop-while (partial not= root)
-                                          (cycle pitched-scale))
-                              pitch))
+        interval (note-distance (pitch->midi pitch) (pitch->midi root))
         extension (cond
                     (= root pitch) nil
                     (< note (first notes)) {:bass pitch}
-                    (< note (+ 12 (first notes))) {:degree degree}
-                    :else {:degree (+ degree (count pitched-scale))})]
+                    (< note (+ 12 (first notes))) {:degree (extensions interval)}
+                    :else {:degree (extensions (+ 12 interval))})]
     (-> chord
         (assoc :notes new-notes)
         (assoc :pitches new-pitches)
@@ -102,10 +122,11 @@
 (defn- chord-priority [chords]
   (let [cost (fn [{:keys [bass degree type inversion]}]
                (cond
-                 (some? degree) 1
-                 (some? bass) 2
-                 (not= inversion 0) 3
                  (nil? type) 4
+                 (and (not= inversion 0)
+                      (or (some? degree) (some? bass))) 3
+                 (or (some? degree) (some? bass)) 2
+                 (not= inversion 0) 1
                  :else 0))]
     (min-by cost chords)))
 
@@ -123,6 +144,11 @@
        (partition 2 1)
        (map (partial apply abs-diff))
        (some (partial <= 10))))
+
+(defn- any-minor-ninths? [notes]
+  (->> (combinations (pop (apply list notes)) 2)
+       (map (partial apply abs-diff))
+       (some (partial = 13))))
 
 (defn- negligible-bass? [notes]
   (and (<= 3 (- (second notes) (first notes)) 4)
@@ -154,14 +180,15 @@
                     :type type :inversion inversion
                     :pitches (pitch-invert pitches inversion)
                     :notes (note-invert notes inversion)
-                    :fcolor (fcolor pitches)}))]
+                    :extent (extent (map pitch->brightness pitches))}))]
     (->> chords
          (mapcat (fn [chord] [chord (open-voicing chord)]))
          (mapcat (fn [chord] (conj (add-extensions chord) chord)))
          (distinct-by (comp sink-octave :notes) chord-priority)
-         (remove (fn [chord] (= 3 (count (:notes chord)))))
+         (remove (comp (partial = 3) count :notes))
          (remove (comp any-clustered-notes? :notes))
          (remove (comp any-sevenths? :notes))
+         (remove (comp any-minor-ninths? :notes))
          (remove (comp negligible-bass? :notes))
          (map (fn [chord]
                 (assoc chord :dissonance (chord-dissonance (:notes chord))))))))
@@ -181,21 +208,22 @@
         note (min-by (partial abs-diff 0)
                      [(pitch->midi tonic) (- (pitch->midi tonic) 12)])]
     (->> (scale base-chord-sets)
-         (r/map (fn [{:keys [root notes type pitches bass degree] :as chord}]
-                  (conj chord
-                        {:tonic tonic :scale scale
-                         :notes (map (partial + note) notes)
-                         :pitches (map (partial fifths-above brightness) pitches)
-                         :type (when (and (some? type) (nil? bass))
-                                 (str (name type) (when degree (str "add" degree))))
-                         :name (when type
-                                 (-> (fifths-above brightness root)
-                                     (str (name type))
-                                     (str (when bass
-                                            (str "/" (fifths-above brightness
-                                                                   bass))))
-                                     (str (when degree
-                                            (str "add" degree)))))})))
+         (r/map (fn [{:keys [root notes type pitches inversion
+                             bass degree extent dissonance]}]
+                  {:tonic tonic :scale scale
+                   :inversion inversion :dissonance dissonance
+                   :notes (map (partial + note) notes)
+                   :pitches (map (partial fifths-above brightness) pitches)
+                   :extent (map (partial + brightness) extent)
+                   :type (when (and (some? type) (nil? bass))
+                           (str (name type) (when degree (str "add" degree))))
+                   :name (when type
+                           (-> (fifths-above brightness root)
+                               (str (name type))
+                               (str (when bass
+                                      (str "/" (fifths-above brightness bass))))
+                               (str (when degree
+                                      (str "add" degree)))))}))
          (r/mapcat transfer-octaves)
          (r/remove (comp any-muddy-intervals? :notes))
          r/foldcat)))

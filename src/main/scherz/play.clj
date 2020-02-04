@@ -4,7 +4,7 @@
   (:require [scherz.generate :refer [generate-progression]]))
 
 (defn play-chord [chord]
-  (doseq [note (:notes chord)]
+  (doseq [note (map (partial + 12) (:notes chord))]
     (piano note)))
 
 (defn play-progression [progression]
@@ -22,3 +22,4 @@
       progression (generate-progression scales (cycle tensions) options)]
   (play-progression progression))
 
+(play-chord {:notes '(51 58 59 66)})
