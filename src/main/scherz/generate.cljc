@@ -1,5 +1,6 @@
 (ns scherz.generate
-  (:require [scherz.util :as u]
+  (:require [clojure.core.reducers :as r]
+            [scherz.util :as u]
             [scherz.scale :as s]
             [scherz.gravity :as g]
             [scherz.brightness :as b]
@@ -15,8 +16,9 @@
         cost (fn [[_ score]]
                (if (nil? score) u/infinity score))]
     (->> chords
-         (map (apply juxt flist)) ; apply each scoring function to every chord
-         (map combine-scores) ; combine individual scores for each chord
+         (r/map (apply juxt flist)) ; apply each scoring function to every chord
+         (r/map combine-scores) ; combine individual scores for each chord
+         r/foldcat
          (map vector chords) ; get tuples of [chord score]
          (u/min-by-coll cost) ; choose chord(s) with lowest scores
          (map first))))
