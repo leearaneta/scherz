@@ -70,8 +70,9 @@
         tension #?(:clj tension :cljs (js->clj tension :keywordize-keys :true))
         {:keys [color dissonance gravity curve]} tension
         chords (mapcat (partial chord-sets prev color curve) scales)
+        brightness-extent (u/extent (map b/pitch->brightness (:pitches prev)))
         score-color (fn [chord]
-                      (-> (b/chord-color (:pitches prev) (:pitches chord))
+                      (-> (apply (:fcolor chord) brightness-extent)
                           (/ 5)
                           (u/abs-diff color)))
         score-dissonance (fn [chord]
@@ -82,7 +83,8 @@
                         (when-let [g (g/chord-gravity (:notes prev)
                                                       (:notes chord))]
                           (max (- gravity g) 0)))]
-    (apply-scores chords score-color score-dissonance score-gravity)))
+    (map (fn [chord] (dissoc chord :bass :type :fcolor))
+         (apply-scores chords score-color score-dissonance score-gravity))))
 
 (defn initial-chord
   "Finds the first chord of a certain type within the given scales."

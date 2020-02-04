@@ -1,5 +1,4 @@
-(ns scherz.util
-  (:require [clojure.core.reducers :as r]))
+(ns scherz.util)
 
 (defn avg [coll]
   (if (empty? coll)
@@ -63,3 +62,7 @@
      (->> (distinct (map f coll))
           (map groups)
           (map g)))))
+
+(defn extent [coll]
+  [(apply min coll) (apply max coll)])
+
