@@ -56,8 +56,8 @@
   (->> '(3 4 5)
        (map (partial transfer-chord (:notes chord)))
        (filter (fn [notes]
-                 (and (<= 38 (first notes))
-                      (<= (last notes) 82))))
+                 (and (<= 42 (first notes))
+                      (<= (last notes) 78))))
        (map (partial assoc chord :notes))))
 
 (defn open-voicing

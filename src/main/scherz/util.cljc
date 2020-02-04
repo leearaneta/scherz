@@ -1,4 +1,5 @@
-(ns scherz.util)
+(ns scherz.util
+  (:require [clojure.core.reducers :as r]))
 
 (defn avg [coll]
   (if (empty? coll)
