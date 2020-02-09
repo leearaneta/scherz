@@ -66,3 +66,4 @@
        frequencies
        (map (fn [[prime exponent]] (* exponent (dec prime))))
        (reduce +)))
+

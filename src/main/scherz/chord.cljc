@@ -1,14 +1,16 @@
 (ns scherz.chord
   (:require [clojure.core.reducers :as r]
+            [clojure.spec.alpha :as spec]
             [clojure.set :refer [difference]]
+            [clojure.string :refer [join replace]]
             [clojure.math.combinatorics :refer [combinations]]
             [scherz.util :refer [find-coll insert abs-diff
                                  min-by distinct-by extent]]
-            [scherz.scale :refer [scales scale-intervals valid-scale?]]
+            [scherz.scale :refer [scales scale-intervals]]
             [scherz.brightness :refer [pitch->brightness pitch-scale
                                        pitch-chord fifths-above]]
-            [scherz.gravity :refer [condense sink-octave open-voicing
-                                    note-invert pitch-invert transfer-octaves]]
+            [scherz.gravity :refer [condense sink-octave note-invert pitch-invert
+                                    open-voicing transfer-octaves note-distance]]
             [scherz.dissonance :refer [chord-dissonance]]))
 
 (def chord-shapes
@@ -39,13 +41,6 @@
         (take (inc (last chord-shape))) ; trim scale
         (#(mapv (vec %) chord-shape))
         (mapv (partial + 12)))))
-
-(defn- note-distance [target-note source-note]
-  (cond (<= 12 (- target-note source-note))
-        (recur (- target-note 12) source-note)
-        (< target-note source-note)
-        (recur target-note (- source-note 12))
-        :else (- target-note source-note)))
 
 (def chord-types
   "Mapping of chord types to midi notes (starting at 0)."
@@ -231,7 +226,7 @@
 (defn possible-chord-types
   "Outputs all possible chord types given a set of scales."
   [scales]
-  {:pre [(every? valid-scale? scales)]}
+  {:pre [(spec/assert (spec/* :scherz.scale/scale) scales)]}
   (->> (map keyword scales)
        (mapcat (fn [scale]
                  (let [note-ct (count (scale-intervals scale))]
@@ -244,3 +239,21 @@
 (defn possible-chord-type? [scales type]
   (some (partial = (keyword type))
         (possible-chord-types scales)))
+
+(def type-regexp
+  (let [types (->> (keys chord-types) (map name) (join "|"))
+        type-group (str "(" (replace types "+" "\\+") ")")
+        extensions (join "|" (vals extensions))
+        extension-group (str "(add(" extensions "))?")]
+    (str type-group extension-group "$")))
+
+(defn- valid-type? [type]
+  (some? (re-matches (re-pattern type-regexp) type)))
+
+(spec/def ::notes (spec/* int?))
+(spec/def ::type valid-type?)
+(spec/def ::chord (spec/keys :req-un [::notes
+                                      :scherz.brightness/pitches
+                                      :scherz.brightness/tonic
+                                      :scherz.scale/scale]))
+

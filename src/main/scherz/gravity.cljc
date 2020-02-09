@@ -85,3 +85,10 @@
     (-> chord
         (update :notes voice-notes)
         (update :pitches voice-pitches))))
+
+(defn note-distance [target-note source-note]
+  (cond (<= 12 (- target-note source-note))
+        (recur (- target-note 12) source-note)
+        (< target-note source-note)
+        (recur target-note (- source-note 12))
+        :else (- target-note source-note)))

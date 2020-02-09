@@ -1,10 +1,28 @@
 (ns scherz.generate
   (:require [clojure.core.reducers :as r]
+            [clojure.spec.alpha :as spec]
             [scherz.util :as u]
             [scherz.scale :as s]
             [scherz.gravity :as g]
             [scherz.brightness :as b]
             [scherz.chord :as c]))
+
+(spec/def ::tension-val (spec/and number? #(<= 0 % 1)))
+(spec/def ::tension-direction #{"asc" "desc"})
+
+(spec/def ::color ::tension-val)
+(spec/def ::dissonance ::tension-val)
+(spec/def ::gravity ::tension-val)
+(spec/def ::arc ::tension-direction)
+(spec/def ::incline ::tension-direction)
+
+(spec/def ::tension (spec/keys :req-un [::color ::dissonance ::gravity]
+                               :opt-un [::arc ::incline]))
+
+(spec/def ::seed int?)
+(spec/def ::options (spec/keys :opt-un [:scherz.brightness/tonic
+                                        :scherz.chord/type
+                                        ::seed]))
 
 (defn- apply-scores
   "Picks a chord that has the lowest combined score."
@@ -19,13 +37,13 @@
          (r/map (apply juxt flist)) ; apply each scoring function to every chord
          (r/map combine-scores) ; combine individual scores for each chord
          r/foldcat
-         (map vector chords) ; get tuples of [chord score]
-         (u/min-by-coll cost) ; choose chord(s) with lowest scores
+         (map vector chords)      ; get tuples of [chord score]
+         (u/min-by-coll cost)     ; choose chord(s) with lowest scores
          (map first))))
 
 (defn- chord-sets
   "Returns chords within the given scale and target color from the previous chord."
-  [prev-chord target-color curve direction scale]
+  [prev-chord target-color curve incline scale]
   (let [target-color (Math/round (double (* 5 target-color)))
         fcurves (cond
                   (or (= target-color 0) (= (keyword curve) :asc)) [+]
@@ -40,15 +58,12 @@
                              b/brightness->pitch ; get new tonic
                              (c/chord-set scale)))
         chords (mapcat apply-curve fcurves)]
-    (if (some? direction)
-      (let [fdirection (if (= (keyword direction) :asc) neg? pos?)
+    (if (some? incline)
+      (let [fdirection (if (= (keyword incline) :asc) neg? pos?)
             centroid (u/avg (:notes prev-chord))
             right-direction? (comp fdirection (partial - centroid) u/avg :notes)]
         (filter right-direction? chords))
       chords)))
-
-(defn- valid-tension? [{:keys [color dissonance gravity]}]
-  (every? #(<= 0 % 1) [color dissonance gravity]))
 
 (def scale-dissonance
   (->> s/scales
@@ -67,9 +82,10 @@
 
 (defn generate-chords
   [scales prev tension]
-  {:pre [(every? s/valid-scale? scales)
-         (valid-tension? tension)]}
-  (let [scales #?(:clj scales :cljs (map keyword scales))
+  {:pre [(spec/assert (spec/* :scherz.scale/scale) scales)
+         (spec/assert :scherz.chord/chord prev)
+         (spec/assert ::tension tension)]}
+  (let [scales (map keyword scales)
         prev #?(:clj prev :cljs (js->clj prev :keywordize-keys :true))
         tension #?(:clj tension :cljs (js->clj tension :keywordize-keys :true))
         {:keys [color dissonance gravity curve direction]} tension
@@ -92,14 +108,17 @@
 
 (defn initial-chord
   "Finds the first chord of a certain type within the given scales."
-  ([scales type] (initial-chord scales type "C"))
-  ([scales type tonic]
-   {:pre [(every? s/valid-scale? scales)
-          (b/valid-pitch? tonic)
+  ([scales tonic]
+   (initial-chord scales tonic (name (first (c/possible-chord-types scales)))))
+  ([scales tonic type]
+   {:pre [(spec/assert (spec/* :scherz.scale/scale) scales)
+          (spec/assert :scherz.brightness/tonic tonic)
+          (spec/assert :scherz.chord/type type)
           (c/possible-chord-type? scales type)]}
    (dissoc (->> (map keyword scales)
                 (mapcat (partial c/chord-set tonic))
-                (u/find-coll (comp (partial = type) :type)))
+                (filter (comp (partial = type) :type))
+                (u/find-coll (comp (partial = 0) :inversion)))
            :extent)))
 
 (defn- next-chord
@@ -113,12 +132,16 @@
 
 (defn generate-progression
   "Repeatedly calls next-chord to generate a chord progression."
-  [scales tensions options]
-  (let [options #?(:clj options :cljs (js->clj options :keywordize-keys :true))
-        {:keys [root type seed]
-         :or {root "C"
-              type (name (first (c/possible-chord-types scales)))
-              seed 0}} options]
-    (reductions (partial next-chord (int seed) scales)
-                (initial-chord scales type root)
-                tensions)))
+  ([scales tensions] (generate-progression scales tensions nil))
+  ([scales tensions options]
+   {:pre [(spec/assert (spec/* :scherz.scale/scale) scales)
+          (spec/assert (spec/* ::tension) tensions)
+          (spec/assert (spec/nilable ::options) options)]}
+   (let [options #?(:clj options :cljs (js->clj options :keywordize-keys :true))
+         {:keys [tonic type seed]
+          :or {tonic "C"
+               type (name (first (c/possible-chord-types scales)))
+               seed 0}} options]
+     (reductions (partial next-chord (int seed) scales)
+                 (initial-chord scales tonic type)
+                 tensions))))
