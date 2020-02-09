@@ -1,10 +1,8 @@
 (ns scherz.brightness
   (:require [clojure.string :refer [join]]
+            [clojure.spec.alpha :as spec]
             [scherz.util :refer [abs rotate]]
-            [scherz.scale :refer [scale-intervals scales valid-scale?]]))
-
-(defn valid-direction? [direction]
-  (or (= direction :asc) (= direction :desc)))
+            [scherz.scale :refer [scale-intervals scales]]))
 
 (def base-circle [\F \C \G \D \A \E \B])
 
@@ -12,12 +10,6 @@
   (->> (range)
        (map vector base-circle)
        (into {})))
-
-(defn valid-pitch? [pitch]
-  (let [accidentals (subs pitch 1)]
-    (and (some (partial = (first pitch)) base-circle)
-         (-> accidentals distinct count (<= 1))
-         (some (partial = (first accidentals)) '(\# \b nil)))))
 
 (defn pitch->brightness
   "Measures a pitch's brightness based on its position in the circle of fifths.
@@ -38,8 +30,7 @@
   "Creates an infinite sequence of fifths (ascending or descending)."
   ([pitch] (fifths pitch :asc))
   ([pitch direction]
-   {:pre [(valid-direction? direction)]}   
-   (let [fdirection (if (= direction :asc) inc dec)
+   (let [fdirection (if (= (keyword direction) :asc) inc dec)
          next-pitch (comp brightness->pitch fdirection pitch->brightness)]
      (iterate next-pitch pitch))))
 
@@ -65,7 +56,6 @@
   "Generates a circle of fifths given a tonic and a scale."
   ([tonic] (circle-of-fifths tonic :major))
   ([tonic scale]
-   {:pre [(valid-pitch? tonic) (valid-scale? scale)]}
    (let [bright? (pos? (scale-brightness scale))
          ; if the scale is bright, place the tritone in the upper arc of the circle
          upper-arc (take (if bright? 6 5)
@@ -120,3 +110,9 @@
                 (pitch->brightness source-pitch))
         direction (if (pos? diff) :asc :desc)]
     (take (inc diff) (fifths source-pitch direction))))
+
+(defn valid-pitch? [pitch]
+  (some? (re-matches #"[A-G](#*|b*)$" pitch)))
+
+(spec/def ::pitches (spec/* valid-pitch?))
+(spec/def ::tonic valid-pitch?)

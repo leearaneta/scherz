@@ -1,0 +1,1 @@
+web: java $JVM_OPTS -cp target/scherz.jar clojure.main -m scherz.server

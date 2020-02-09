@@ -1,4 +1,5 @@
-(ns scherz.scale)
+(ns scherz.scale
+  (:require [clojure.spec.alpha :as spec]))
 
 (def scale-intervals
   (let [rotate (fn [coll offset]
@@ -32,3 +33,6 @@
 
 (defn valid-scale? [scale]
   (some (partial = (keyword scale)) scales))
+
+(spec/def ::scale valid-scale?)
+

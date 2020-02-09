@@ -1,4 +1,5 @@
-(ns scherz.util)
+(ns scherz.util
+  (:require [clojure.spec.alpha :as spec]))
 
 (defn avg [coll]
   (if (empty? coll)
@@ -66,3 +67,4 @@
 (defn extent [coll]
   [(apply min coll) (apply max coll)])
 
+(spec/check-asserts true)
