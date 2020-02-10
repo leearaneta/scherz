@@ -1,6 +1,7 @@
 (ns scherz.generate
   (:require [clojure.core.reducers :as r]
-            [clojure.spec.alpha :as spec]
+            #?(:clj [clojure.spec.alpha :as spec]
+               :cljs [cljs.spec.alpha :as spec]) 
             [scherz.util :as u]
             [scherz.scale :as s]
             [scherz.gravity :as g]

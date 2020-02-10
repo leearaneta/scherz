@@ -1,6 +1,7 @@
 (ns scherz.chord
   (:require [clojure.core.reducers :as r]
-            [clojure.spec.alpha :as spec]
+            #?(:clj [clojure.spec.alpha :as spec]
+               :cljs [cljs.spec.alpha :as spec]) 
             [clojure.set :refer [difference]]
             [clojure.string :refer [join replace]]
             [clojure.math.combinatorics :refer [combinations]]
