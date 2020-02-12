@@ -1,6 +1,7 @@
 (ns scherz.generate
   (:require [clojure.core.reducers :as r]
-            [clojure.spec.alpha :as spec]
+            #?(:clj [clojure.spec.alpha :as spec]
+               :cljs [cljs.spec.alpha :as spec]) 
             [scherz.util :as u]
             [scherz.scale :as s]
             [scherz.gravity :as g]
@@ -66,14 +67,16 @@
       chords)))
 
 (def scale-dissonance
+  "Mapping of scales to tuples of (minimum-dissonance, maximum-dissonance).
+   These tuples are used to normalize dissonance between multiple scales."
   (->> s/scales
        (map (comp u/extent (partial map :dissonance) c/base-chord-sets))
        (map vector s/scales)
        (into {})))
 
 (defn normalize-dissonance
-  "With a set of scales, returns a function that takes in a dissonance value and
-   outputs a normalized dissonance value from 0 to 1."
+  "Outputs a normalized dissonance value from 0 to 1 given a base dissonance value
+   and a set of scales."
   [dissonance scales]
   (let [[min-vals max-vals] (apply map vector (map scale-dissonance scales)) 
         min-dissonance (apply min min-vals)
@@ -109,6 +112,7 @@
 (defn initial-chord
   "Finds the first chord of a certain type within the given scales."
   ([scales tonic]
+   {:pre [(spec/assert (spec/* :scherz.scale/scale) scales)]}
    (initial-chord scales tonic (name (first (c/possible-chord-types scales)))))
   ([scales tonic type]
    {:pre [(spec/assert (spec/* :scherz.scale/scale) scales)

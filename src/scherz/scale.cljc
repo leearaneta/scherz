@@ -1,5 +1,6 @@
 (ns scherz.scale
-  (:require [clojure.spec.alpha :as spec]))
+  (:require #?(:clj [clojure.spec.alpha :as spec]
+               :cljs [cljs.spec.alpha :as spec])))
 
 (def scale-intervals
   (let [rotate (fn [coll offset]

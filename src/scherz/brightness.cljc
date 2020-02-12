@@ -1,6 +1,7 @@
 (ns scherz.brightness
   (:require [clojure.string :refer [join]]
-            [clojure.spec.alpha :as spec]
+            #?(:clj [clojure.spec.alpha :as spec]
+               :cljs [cljs.spec.alpha :as spec]) 
             [scherz.util :refer [abs rotate]]
             [scherz.scale :refer [scale-intervals scales]]))
 

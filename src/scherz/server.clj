@@ -1,4 +1,5 @@
 (ns scherz.server
+  (:gen-class)
   (:require [compojure.core :refer [defroutes GET ANY]]
             [compojure.handler :refer [site]]
             [ring.adapter.jetty :as jetty]
@@ -51,5 +52,3 @@
 
 ; (.stop server)
 ; (def server (-main))
-
-

@@ -1,5 +1,6 @@
 (ns scherz.util
-  (:require [clojure.spec.alpha :as spec]))
+  (:require #?(:clj [clojure.spec.alpha :as spec]
+               :cljs [cljs.spec.alpha :as spec])))
 
 (defn avg [coll]
   (if (empty? coll)

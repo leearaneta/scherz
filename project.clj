@@ -8,10 +8,10 @@
                  [environ "1.1.0"]]
   :native-path "native"
   :source-paths ["src"]
-  :main scherz.generate
+  :main scherz.server
   :plugins [[environ/environ.lein "0.3.1"]]
   :hooks [environ.leiningen.hooks]
   :uberjar-name "scherz.jar"
-  :profiles {:production {:env {:production true}}})
-
+  :profiles {:production {:env {:production true}}}
+  :min-lein-version "2.0.0")
 

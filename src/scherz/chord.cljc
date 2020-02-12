@@ -1,6 +1,7 @@
 (ns scherz.chord
   (:require [clojure.core.reducers :as r]
-            [clojure.spec.alpha :as spec]
+            #?(:clj [clojure.spec.alpha :as spec]
+               :cljs [cljs.spec.alpha :as spec]) 
             [clojure.set :refer [difference]]
             [clojure.string :refer [join replace]]
             [clojure.math.combinatorics :refer [combinations]]
@@ -84,6 +85,8 @@
    22 "b7" 23 "7"})
 
 (defn- add-extension
+  "Given a base chord and an extension to add, appends :degree or :bass (or none)
+   to a chord. :degree and :bass are later used to help give the chord a name."
   [{:keys [notes pitches root] :as chord} [pitch note]]
   (let [new-notes (vec (sort (conj notes note)))
         new-pitches (insert pitches (.indexOf new-notes note) pitch)
@@ -98,7 +101,8 @@
         (assoc :pitches new-pitches)
         (into extension))))
 
-(defn add-extensions [{:keys [scale tonic pitches notes root] :as chord}]
+(defn add-extensions
+  [{:keys [scale tonic pitches notes root] :as chord}]
   (let [extensions (fn [pitch]
                      (->> (pitch->midi pitch)
                           (iterate (partial + 12))
@@ -114,7 +118,10 @@
          (mapcat extensions)
          (map (partial add-extension chord)))))
 
-(defn- chord-priority [chords]
+(defn- chord-priority
+  "Determines which chord is chosen in the event that there are multiple chords
+   with the same notes in a chord set."
+  [chords]
   (let [cost (fn [{:keys [bass degree type inversion]}]
                (cond
                  (nil? type) 4
@@ -125,22 +132,29 @@
                  :else 0))]
     (min-by cost chords)))
 
-(defn- any-clustered-notes? [notes]
-  (let [consecutive? (fn [pairs]
+(defn- any-clustered-notes?
+  "Returns true if any three consecutive notes are a whole step or less away."
+  [notes]
+  (let [clustered? (fn [pairs]
                        (->> pairs
                             (map (partial apply abs-diff))
                             (every? (partial > 3))))]
     (->> (partition 3 1 notes)
          (map (partial partition 2 1))
-         (some consecutive?))))
+         (some clustered?))))
 
-(defn- any-sevenths? [notes]
+(defn- any-sevenths?
+  "Returns true if any consecutive notes (excluding the bass) are more
+   than a seventh away."
+  [notes]
   (->> (pop (apply list notes))
        (partition 2 1)
        (map (partial apply abs-diff))
        (some (partial <= 10))))
 
-(defn- any-minor-ninths? [notes]
+(defn- any-minor-ninths?
+  "Returns true if any notes (excluding the bass) are a minor ninth away."
+  [notes]
   (->> (combinations (pop (apply list notes)) 2)
        (map (partial apply abs-diff))
        (some (partial = 13))))
@@ -150,7 +164,9 @@
        (or (< 6 (- (nth notes 2) (second notes)))
            (< 8 (- (nth notes 3) (nth notes 2))))))
 
-(defn- any-muddy-intervals? [notes]
+(defn- any-muddy-intervals?
+  "Returns true if any intervals are too close to each other in a low register."
+  [notes]
   (let [muddy? (fn [[from to]]
                  (cond
                    (< from 50) (< (- to from) 7)
@@ -256,4 +272,3 @@
                                       :scherz.brightness/pitches
                                       :scherz.brightness/tonic
                                       :scherz.scale/scale]))
-
