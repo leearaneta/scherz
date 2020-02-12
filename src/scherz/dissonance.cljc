@@ -55,8 +55,8 @@
      (zero? (mod n f)) (cons f (prime-factors f (/ n f)))
      :else (recur (inc f) n))))
 
-(defn chord-dissonance
-  "Measures dissonance of a chord based on Euler's Gradus Suavitatis."
+(defn dissonance
+  "Measures dissonance of a set of midi notes based on Euler's Gradus Suavitatis."
   [notes]
   (->> notes
        chord-ratios

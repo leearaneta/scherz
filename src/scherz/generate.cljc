@@ -16,6 +16,7 @@
 (spec/def ::gravity ::tension-val)
 (spec/def ::arc ::tension-direction)
 (spec/def ::incline ::tension-direction)
+(spec/def ::temper ::tension-direction)
 
 (spec/def ::tension (spec/keys :req-un [::color ::dissonance ::gravity]
                                :opt-un [::arc ::incline]))
@@ -42,29 +43,40 @@
          (u/min-by-coll cost)     ; choose chord(s) with lowest scores
          (map first))))
 
+(defn- apply-incline [incline centroid chords]
+  (if (some? incline)
+    (let [inclinef (if (= incline "asc") pos? neg?)
+          right-direction? (fn [chord]
+                             (inclinef (- (u/avg (:notes chord)) centroid)))]
+      (filter right-direction? chords))
+    chords))
+
+(defn- apply-temper [temper chords]
+  (if (some? temper)
+    (let [temperf (if (= temper "asc") pos? neg?)]
+      (filter (comp temperf :temper) chords))
+    chords))
+
 (defn- chord-sets
   "Returns chords within the given scale and target color from the previous chord."
-  [prev-chord target-color curve incline scale]
+  [prev-chord target-color arc incline temper scale]
   (let [target-color (Math/round (double (* 5 target-color)))
-        fcurves (cond
-                  (or (= target-color 0) (= (keyword curve) :asc)) [+]
-                  (= (keyword curve) :desc) [-]
+        arcfs (cond
+                  (or (= target-color 0) (= arc "asc")) [+]
+                  (= arc "desc") [-]
                   :else [+ -])
-        apply-curve (fn [fcurve]
+        apply-arc (fn [arcf]
                       (-> (b/scale-brightness (:scale prev-chord))
-                             (+ (b/pitch->brightness (:tonic prev-chord)))
-                             (fcurve target-color) ; add or subtract target color
-                             ; isolate amount of brightness we need from new tonic
-                             (- (b/scale-brightness scale))
-                             b/brightness->pitch ; get new tonic
-                             (c/chord-set scale)))
-        chords (mapcat apply-curve fcurves)]
-    (if (some? incline)
-      (let [fdirection (if (= (keyword incline) :asc) neg? pos?)
-            centroid (u/avg (:notes prev-chord))
-            right-direction? (comp fdirection (partial - centroid) u/avg :notes)]
-        (filter right-direction? chords))
-      chords)))
+                          (+ (b/pitch->brightness (:tonic prev-chord)))
+                          (arcf target-color) ; add or subtract target color
+                          ; isolate amount of brightness we need from new tonic
+                          (- (b/scale-brightness scale)) 
+                          b/brightness->pitch ; get new tonic
+                          (c/chord-set scale)))
+        centroid (u/avg (:notes prev-chord))]
+    (->> (mapcat apply-arc arcfs)
+         (apply-incline incline centroid)
+         (apply-temper temper))))
 
 (def scale-dissonance
   "Mapping of scales to tuples of (minimum-dissonance, maximum-dissonance).
@@ -91,11 +103,11 @@
   (let [scales (map keyword scales)
         prev #?(:clj prev :cljs (js->clj prev :keywordize-keys :true))
         tension #?(:clj tension :cljs (js->clj tension :keywordize-keys :true))
-        {:keys [color dissonance gravity curve direction]} tension
-        chords (mapcat (partial chord-sets prev color curve direction) scales)
+        {:keys [color dissonance gravity arc incline temper]} tension
+        chords (mapcat (partial chord-sets prev color arc incline temper) scales)
         extent (u/extent (map b/pitch->brightness (:pitches prev)))
         score-color (fn [chord]
-                      (-> (b/chord-color (:extent chord) extent)
+                      (-> (b/color (:extent chord) extent)
                           (/ 5)
                           (u/abs-diff color)))
         score-dissonance (fn [chord]
