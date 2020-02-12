@@ -8,11 +8,11 @@
             [scherz.util :refer [find-coll insert abs-diff
                                  min-by distinct-by extent]]
             [scherz.scale :refer [scales scale-intervals]]
-            [scherz.brightness :refer [pitch->brightness pitch-scale
-                                       pitch-chord fifths-above]]
+            [scherz.brightness :refer [pitch->brightness fifths-above
+                                       pitch-chord pitch-scale temper]]
             [scherz.gravity :refer [condense sink-octave note-invert pitch-invert
                                     open-voicing transfer-octaves note-distance]]
-            [scherz.dissonance :refer [chord-dissonance]]))
+            [scherz.dissonance :refer [dissonance]]))
 
 (def chord-shapes
   "Mapping of scale lengths -> chord shapes (used to generate sets of chords).
@@ -201,8 +201,8 @@
          (remove (comp any-sevenths? :notes))
          (remove (comp any-minor-ninths? :notes))
          (remove (comp negligible-bass? :notes))
-         (map (fn [chord]
-                (assoc chord :dissonance (chord-dissonance (:notes chord))))))))
+         (map (fn [chord] (assoc chord :dissonance (dissonance (:notes chord)))))
+         (map (fn [chord] (assoc chord :temper (temper (:pitches chord))))))))
 
 (def base-chord-sets
   "Hashmap of base chord sets for all scales.
@@ -220,9 +220,9 @@
                      [(pitch->midi tonic) (- (pitch->midi tonic) 12)])]
     (->> (scale base-chord-sets)
          (r/map (fn [{:keys [root notes type pitches inversion
-                             bass degree extent dissonance]}]
-                  {:tonic tonic :scale scale
-                   :inversion inversion :dissonance dissonance
+                             bass degree extent dissonance temper]}]
+                  {:tonic tonic :scale scale :inversion inversion
+                   :dissonance dissonance :temper temper
                    :notes (map (partial + note) notes)
                    :pitches (map (partial fifths-above brightness) pitches)
                    :extent (map (partial + brightness) extent)

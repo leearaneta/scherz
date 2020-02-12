@@ -85,7 +85,7 @@
        (take (inc (last chord-shape))) ; trim scale
        (#(mapv (vec %) chord-shape))))
 
-(defn chord-color
+(defn color
   "Computes how much more 'colorful' chords are in relation to each other.
 
   The C Major triad's brightest note is E and the G major triad's brightest is B. 
@@ -114,6 +114,13 @@
 
 (defn valid-pitch? [pitch]
   (some? (re-matches #"[A-G](#*|b*)$" pitch)))
+
+(defn temper [pitches]
+  (let [bass-brightness (pitch->brightness (first pitches))]
+    (->> (pop (apply list pitches))
+         (map pitch->brightness)
+         (map (fn [brightness] (- brightness bass-brightness)))
+         (reduce +))))
 
 (spec/def ::pitches (spec/* valid-pitch?))
 (spec/def ::tonic valid-pitch?)

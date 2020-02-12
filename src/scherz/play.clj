@@ -17,7 +17,7 @@
       tensions [{:color 0.4 :dissonance 0.25 :gravity 0.2}
                 {:color 0.2 :dissonance 0.4 :gravity 0.5}
                 {:color 0 :dissonance 0.6 :gravity 0.75}
-                {:color 0.15 :dissonance 0.15 :gravity 0.5}]
-      options {:root "D" :type "M7" :seed -1}
+                {:color 0.15 :dissonance 0.2 :gravity 0.5}]
+      options {:root "D" :type "M7" :seed 6}
       progression (generate-progression scales tensions options)]
   (play-progression progression))
