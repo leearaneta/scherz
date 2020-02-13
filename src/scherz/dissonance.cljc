@@ -43,8 +43,9 @@
   (let [evaluate-ratio (fn [ratio] (/ (:numerator ratio) (:denominator ratio)))
         terms (sort-by evaluate-ratio ratios)
         g (gcd-ratios terms)
+        div #?(:clj quot :cljs (fn [n d] (Math/floor (/ n d))))
         simplify (fn [term]
-                   (-> (:numerator term) (quot g) (/ (:denominator term)) int))]
+                   (-> (:numerator term) (div g) (/ (:denominator term)) int))]
     (map simplify terms)))
 
 (defn prime-factors
@@ -66,3 +67,4 @@
        frequencies
        (map (fn [[prime exponent]] (* exponent (dec prime))))
        (reduce +)))
+

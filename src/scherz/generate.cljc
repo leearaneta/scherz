@@ -19,7 +19,7 @@
 (spec/def ::temper ::tension-direction)
 
 (spec/def ::tension (spec/keys :req-un [::color ::dissonance ::gravity]
-                               :opt-un [::arc ::incline]))
+                               :opt-un [::arc ::incline ::temper]))
 
 (spec/def ::seed int?)
 (spec/def ::options (spec/keys :opt-un [:scherz.brightness/tonic
@@ -66,13 +66,13 @@
                   (= arc "desc") [-]
                   :else [+ -])
         apply-arc (fn [arcf]
-                      (-> (b/scale-brightness (:scale prev-chord))
-                          (+ (b/pitch->brightness (:tonic prev-chord)))
-                          (arcf target-color) ; add or subtract target color
-                          ; isolate amount of brightness we need from new tonic
-                          (- (b/scale-brightness scale)) 
-                          b/brightness->pitch ; get new tonic
-                          (c/chord-set scale)))
+                    (-> (b/scale-brightness (keyword (:scale prev-chord)))
+                        (+ (b/pitch->brightness (:tonic prev-chord)))
+                        (arcf target-color) ; add or subtract target color
+                        ; isolate amount of brightness we need from new tonic
+                        (- (b/scale-brightness scale)) 
+                        b/brightness->pitch ; get new tonic
+                        (c/chord-set scale)))
         centroid (u/avg (:notes prev-chord))]
     (->> (mapcat apply-arc arcfs)
          (apply-incline incline centroid)
@@ -101,8 +101,6 @@
          (spec/assert :scherz.chord/chord prev)
          (spec/assert ::tension tension)]}
   (let [scales (map keyword scales)
-        prev #?(:clj prev :cljs (js->clj prev :keywordize-keys :true))
-        tension #?(:clj tension :cljs (js->clj tension :keywordize-keys :true))
         {:keys [color dissonance gravity arc incline temper]} tension
         chords (mapcat (partial chord-sets prev color arc incline temper) scales)
         extent (u/extent (map b/pitch->brightness (:pitches prev)))
@@ -142,7 +140,7 @@
    Seed is used if there is a tie between possible chord choices."
   ([scales prev tension] (next-chord 0 scales prev tension))
   ([seed scales prev tension]
-   (let [chords (time (generate-chords scales prev tension))]
+   (let [chords (generate-chords scales prev tension)]
      (get (vec chords)
           (mod seed (count chords))))))
 
@@ -151,13 +149,16 @@
   ([scales tensions] (generate-progression scales tensions nil))
   ([scales tensions options]
    {:pre [(spec/assert (spec/* :scherz.scale/scale) scales)
-          (spec/assert (spec/* ::tension) tensions)
-          (spec/assert (spec/nilable ::options) options)]}
-   (let [options #?(:clj options :cljs (js->clj options :keywordize-keys :true))
-         {:keys [tonic type seed]
+          (spec/assert (spec/* ::tension) tensions)]}
+   (let [{:keys [tonic type seed]
           :or {tonic "C"
                type (name (first (c/possible-chord-types scales)))
                seed 0}} options]
      (reductions (partial next-chord (int seed) scales)
                  (initial-chord scales tonic type)
                  tensions))))
+
+(let [scales [:major :lydian]
+      initial-chord (initial-chord scales "C" "M7")
+      tension {:color 0.35 :dissonance 0.25 :gravity 0.5}]
+  (generate-chords scales initial-chord tension))

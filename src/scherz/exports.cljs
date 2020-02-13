@@ -4,8 +4,14 @@
             [scherz.generate :refer [initial-chord generate-chords
                                      generate-progression]]))
 
+(defn fnjs [f]
+  (fn [& args]
+    (clj->js (apply f (map #(js->clj % :keywordize-keys true) args)))))
+
 (def util #js {:scales (clj->js scales)
-               :possibleChordTypes (comp clj->js possible-chord-types)})
-(def generate #js {:initialChord (comp clj->js initial-chord)
-                   :generateChords (comp clj->js generate-chords)
-                   :generateProgression (comp clj->js generate-progression)})
+               :possibleChordTypes (fnjs possible-chord-types)})
+(def generate #js {:initialChord (fnjs initial-chord)
+                   :generateChords (fnjs generate-chords)
+                   :generateProgression (fnjs generate-progression)})
+
+

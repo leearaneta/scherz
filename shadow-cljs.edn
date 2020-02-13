@@ -1,14 +1,14 @@
 ;; shadow-cljs configuration
 {:source-paths
- ["src/dev"
-  "src/main"
-  "src/test"]
+ ["src/"
+  "test/"]
 
  :dependencies
  [[org.clojure/math.combinatorics "0.1.6"]]
 
  :builds {:scherz {:target :node-library
-           :output-to "out/scherz/lib.js"
-           :exports {:util scherz.exports/util
-                     :generate scherz.exports/generate}}}}
+                   :output-to "out/scherz/lib.js"
+                   :exports {:util scherz.exports/util
+                             :generate scherz.exports/generate}
+                   :compiler-options {:elide-asserts false}}}}
 
