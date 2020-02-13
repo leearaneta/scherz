@@ -28,9 +28,7 @@
          min infinity
          coll coll]
     (if (empty? coll)
-      (do
-        (when (< 1 (count elems)) (print (str (count elems) " possibilities\n")))
-        elems)
+      elems
       (let [curr (first coll)
             compare (f curr)]
         (cond (< compare min)
