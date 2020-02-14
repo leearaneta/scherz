@@ -190,8 +190,7 @@
                    {:scale scale :tonic "C" :root root
                     :type type :inversion inversion
                     :pitches (pitch-invert pitches inversion)
-                    :notes (note-invert notes inversion)
-                    :extent (extent (map pitch->brightness pitches))}))]
+                    :notes (note-invert notes inversion)}))]
     (->> chords
          (mapcat (fn [chord] [chord (open-voicing chord)]))
          (mapcat (fn [chord] (conj (add-extensions chord) chord)))
@@ -201,8 +200,11 @@
          (remove (comp any-sevenths? :notes))
          (remove (comp any-minor-ninths? :notes))
          (remove (comp negligible-bass? :notes))
-         (map (fn [chord] (assoc chord :dissonance (dissonance (:notes chord)))))
-         (map (fn [chord] (assoc chord :temper (temper (:pitches chord))))))))
+         (map (fn [{:keys [notes pitches] :as chord}]
+                (-> chord
+                    (assoc :dissonance (dissonance notes))
+                    (assoc :temper (temper pitches))
+                    (assoc :extent (extent (map pitch->brightness pitches)))))))))
 
 (def base-chord-sets
   "Hashmap of base chord sets for all scales.
