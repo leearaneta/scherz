@@ -116,7 +116,7 @@
                         (when-let [g (g/chord-gravity (:notes prev)
                                                       (:notes chord))]
                           (max (- gravity g) 0)))]
-    (map (fn [chord] (dissoc chord :extent))
+    (map (fn [chord] (dissoc chord :temper :extent :type))
          (apply-scores chords score-color score-dissonance score-gravity))))
 
 (defn initial-chord
@@ -133,7 +133,7 @@
                 (mapcat (partial c/chord-set tonic))
                 (filter (comp (partial = type) :type))
                 (u/find-coll (comp (partial = 0) :inversion)))
-           :extent)))
+           :temper :extent :type)))
 
 (defn- next-chord
   "Finds the next chord of a progression within the given scales.
@@ -157,8 +157,3 @@
      (reductions (partial next-chord (int seed) scales)
                  (initial-chord scales tonic type)
                  tensions))))
-
-(let [scales [:major :lydian]
-      initial-chord (initial-chord scales "C" "M7")
-      tension {:color 0.35 :dissonance 0.25 :gravity 0.5}]
-  (generate-chords scales initial-chord tension))

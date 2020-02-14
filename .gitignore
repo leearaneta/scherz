@@ -5,3 +5,4 @@ package-lock.json
 .shadow-cljs/
 native/
 target/
+.nrepl-port
