@@ -10,5 +10,9 @@
                    :output-to "out/scherz/lib.js"
                    :exports {:util scherz.exports/util
                              :generate scherz.exports/generate}
-                   :compiler-options {:elide-asserts false}}}}
+                   :compiler-options {:elide-asserts false}}
+          :scherz.brightness {:target :node-library
+                              :output-to "out/scherz.brightness/lib.js"
+                              :exports-var scherz.exports/brightness
+                              :compiler-options {:elide-asserts false}}}}
 
