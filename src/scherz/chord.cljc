@@ -36,12 +36,11 @@
    Returns midi notes from the given scale / shape at the nth scale degree."
   ([scale chord-shape degree] (base-notes "C" scale chord-shape degree))
   ([tonic scale chord-shape degree]
-   (->> (cycle (scale-intervals scale)) ; infinite seq of scale intervals
+   (->> (cycle (scale-intervals scale))
         (reductions + (pitch->midi tonic)) ; seq of midi notes in scale (ascending)
-        (drop (dec degree)) ; start infinite seq at corresponding scale degree
-        (take (inc (last chord-shape))) ; trim scale
-        (#(mapv (vec %) chord-shape))
-        (mapv (partial + 12)))))
+        (drop (dec degree))
+        (take (inc (last chord-shape)))
+        (#(mapv (vec %) chord-shape)))))
 
 (def chord-types
   "Mapping of chord types to midi notes (starting at 0)."
@@ -175,71 +174,81 @@
                    :else false))]
     (some muddy? (partition 2 1 notes))))
 
-(defn- base-chord-set
-  "Returns chords within a given scale in C."
+(defn- base-chords
+  "Iterates over every shape, degree, and inversion in a scale to generate chords."
   [scale]
   (let [note-ct (count (scale-intervals scale))
-        pitched-scale (vec (pitch-scale "C" scale))
-        chords (for [shape (chord-shapes note-ct)
-                     degree (range 1 (inc note-ct))
-                     inversion (-> shape (condense note-ct) count range)]
-                 (let [notes (base-notes "C" scale shape degree)
-                       root (pitched-scale (dec degree))
-                       pitches (pitch-chord "C" scale shape degree)
-                       type (when-let [t (chord-type notes)] (name t))]
-                   {:scale scale :tonic "C" :root root
-                    :type type :inversion inversion
-                    :pitches (pitch-invert pitches inversion)
-                    :notes (note-invert notes inversion)}))]
-    (->> chords
-         (mapcat (fn [chord] [chord (open-voicing chord)]))
-         (mapcat (fn [chord] (conj (add-extensions chord) chord)))
-         (distinct-by (comp sink-octave :notes) chord-priority)
-         (remove (comp (partial = 3) count :notes))
-         (remove (comp any-clustered-notes? :notes))
-         (remove (comp any-sevenths? :notes))
-         (remove (comp any-minor-ninths? :notes))
-         (remove (comp negligible-bass? :notes))
-         (map (fn [{:keys [notes pitches] :as chord}]
-                (-> chord
-                    (assoc :dissonance (dissonance notes))
-                    (assoc :temper (temper pitches))
-                    (assoc :extent (extent (map pitch->brightness pitches)))))))))
+        pitched-scale (vec (pitch-scale "C" scale))]
+    (for [shape (chord-shapes note-ct)
+          degree (range 1 (inc note-ct))
+          inversion (-> shape (condense note-ct) count range)]
+      (let [notes (base-notes "C" scale shape degree)
+            root (pitched-scale (dec degree))
+            pitches (pitch-chord "C" scale shape degree)
+            type (when-let [t (chord-type notes)] (name t))]
+        {:scale scale :tonic "C" :root root
+         :type type :inversion inversion
+         :pitches (pitch-invert pitches inversion)
+         :notes (note-invert notes inversion)}))))
 
-(def base-chord-sets
+(defn- scale->c-chords
+  "Returns chords within a given scale in C."
+  [scale]
+  (->> (base-chords scale)
+       (mapcat (fn [chord] [chord (open-voicing chord)]))
+       (mapcat (fn [chord] (conj (add-extensions chord) chord)))
+       (distinct-by (comp sink-octave :notes) chord-priority)
+       (remove (comp (partial = 3) count :notes))
+       (remove (comp any-clustered-notes? :notes))
+       (remove (comp any-sevenths? :notes))
+       (remove (comp any-minor-ninths? :notes))
+       (remove (comp negligible-bass? :notes))
+       (map (fn [{:keys [notes pitches] :as chord}]
+              (assoc chord
+                     :dissonance (dissonance notes)
+                     :temper (temper pitches)
+                     :extent (extent (map pitch->brightness pitches)))))))
+
+(def c-chords
   "Hashmap of base chord sets for all scales.
    {:major [ ... ] :minor [ ... ]}"
-  (->> (map base-chord-set scales)
+  (->> (map scale->c-chords scales)
        (map vector scales)
        (into {})))
+
+(defn- transpose
+  "Returns a function that transposes a chord in C to the given tonic."
+  [tonic]
+  (let [brightness (dec (pitch->brightness tonic))
+        note (min-by (partial abs-diff 0)
+                     [(pitch->midi tonic) (- (pitch->midi tonic) 12)])]
+    (fn [{:keys [root notes type pitches bass degree extent] :as chord}]
+          (-> chord
+              (assoc :tonic tonic
+                     :notes (map (partial + note) notes)
+                     :pitches (map (partial fifths-above brightness) pitches)
+                     :extent (map (partial + brightness) extent)
+                     :type (when (and (some? type) (nil? bass))
+                             (str (name type) (when degree (str "add" degree))))
+                     :name (when type
+                             (-> (fifths-above brightness root)
+                                 (str (name type))
+                                 (str (when bass
+                                        (str "/" (fifths-above brightness bass))))
+                                 (str (when degree
+                                        (str "add" degree))))))
+              (dissoc :root :bass :degree)))))
 
 (defn chord-set
   "Finds all chords within the given scale in C, and then transposes each chord to
    fall within the given tonic."
   [tonic scale]
-  (let [brightness (dec (pitch->brightness tonic))
-        note (min-by (partial abs-diff 0)
-                     [(pitch->midi tonic) (- (pitch->midi tonic) 12)])]
-    (->> (scale base-chord-sets)
-         (r/map (fn [{:keys [root notes type pitches inversion
-                             bass degree extent dissonance temper]}]
-                  {:tonic tonic :scale scale :inversion inversion
-                   :dissonance dissonance :temper temper
-                   :notes (map (partial + note) notes)
-                   :pitches (map (partial fifths-above brightness) pitches)
-                   :extent (map (partial + brightness) extent)
-                   :type (when (and (some? type) (nil? bass))
-                           (str (name type) (when degree (str "add" degree))))
-                   :name (when type
-                           (-> (fifths-above brightness root)
-                               (str (name type))
-                               (str (when bass
-                                      (str "/" (fifths-above brightness bass))))
-                               (str (when degree
-                                      (str "add" degree)))))}))
-         (r/mapcat transfer-octaves)
-         (r/remove (comp any-muddy-intervals? :notes))
-         r/foldcat)))
+  (->> (scale c-chords)
+       (r/map (transpose tonic))
+       (r/map (fn [chord] (assoc chord :scale scale)))
+       (r/mapcat transfer-octaves)
+       (r/remove (comp any-muddy-intervals? :notes))
+       r/foldcat))
 
 (defn possible-chord-types
   "Outputs all possible chord types given a set of scales."
