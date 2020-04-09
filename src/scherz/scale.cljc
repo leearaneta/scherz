@@ -8,7 +8,8 @@
                       (drop offset)
                       (take (count coll))))
         ionian-sequence   [2 2 1 2 2 2 1]]
-    {:major               (rotate ionian-sequence 0)
+    {:diatonic            (rotate ionian-sequence 0)
+     :major               (rotate ionian-sequence 0)
      :dorian              (rotate ionian-sequence 1)
      :phrygian            (rotate ionian-sequence 2)
      :lydian              (rotate ionian-sequence 3)
@@ -29,6 +30,18 @@
      :dominant-diminished [1 2 1 2 1 2 1 2]
      :diminished          [2 1 2 1 2 1 2 1]
      :augmented           [2 2 2 2 2 2]}))
+
+(def reduced-scale-intervals
+  {:diatonic            [2 2 1 2 2 2 1]
+   :harmonic-minor      [2 1 2 2 1 3 1]
+   :melodic-minor-asc   [2 1 2 2 2 2 1]
+   :neapolitan-major    [1 2 2 2 2 2 1]
+   :neapolitan-minor    [1 2 2 2 1 3 1]
+   :harmonic-major      [2 2 1 2 1 3 1]
+   :melodic-minor-desc  [2 1 2 2 1 2 2]
+   :lydian-minor        [2 2 2 1 1 2 2]
+   :diminished          [2 1 2 1 2 1 2 1]
+   :augmented           [2 2 2 2 2 2]})
 
 (def scales (keys scale-intervals))
 

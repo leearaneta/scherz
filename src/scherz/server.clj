@@ -1,10 +1,11 @@
 (ns scherz.server
   (:gen-class)
-  (:require [compojure.core :refer [defroutes GET ANY]]
+  (:require [compojure.core :refer [defroutes GET POST ANY]]
             [compojure.handler :refer [site]]
             [ring.adapter.jetty :as jetty]
             [ring.util.response :refer [response]]
             [ring.middleware.json :refer [wrap-json-response wrap-json-body]]
+            [ring.middleware.cors :refer [wrap-cors]]
             [environ.core :refer [env]]
             [scherz.scale :refer [scales]]
             [scherz.generate :refer [initial-chords generate-chords
@@ -22,14 +23,15 @@
 (defroutes routes
   (GET "/scales" []
        (response scales))
-  (GET "/generate-progression" {body :body}
+  (POST "/generate-progression" {body :body}
        (response (generate-progression (:scales body)
                                        (:forces body)
                                        (:options body))))
-  (GET "/initial-chords" {body :body}
-       (response (initial-chords (:scales body)
-                                 (:tonic body))))
-  (GET "/generate-chords" {body :body}
+  (POST "/initial-chords" {body :body}
+        (response (initial-chords (:scales body)
+                                  (:tonic body)
+                                  (:dissonance body))))
+  (POST "/generate-chords" {body :body}
        (response (generate-chords (:scales body)
                                   (:prev body)
                                   (:force body))))
@@ -40,6 +42,10 @@
   (-> routes
       (wrap-json-body {:keywords? true})
       wrap-json-response
+      (wrap-cors :access-control-allow-origin [#".*"]
+                 :access-control-allow-methods [:get :patch :post :put :delete]
+                 :access-control-allow-headers #{"Origin" "X-Requested-With"
+                                                 "Content-Type" "Accept"})
       handle-errors))
 
 (defn -main [& [port]]
@@ -48,3 +54,4 @@
 
 ; (.stop server)
 ; (def server (-main))
+

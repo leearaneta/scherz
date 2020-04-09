@@ -4,6 +4,7 @@
                  [compojure "1.6.1"]
                  [ring/ring-jetty-adapter "1.7.1"]
                  [ring/ring-json "0.5.0"]
+                 [ring-cors "0.1.13"]
                  [environ "1.1.0"]]
   :native-path "native"
   :source-paths ["src"]

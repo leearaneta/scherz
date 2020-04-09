@@ -23,8 +23,7 @@
 
 (spec/def ::seed int?)
 (spec/def ::options
-  (spec/keys :opt-un
-             [:scherz.brightness/tonic :scherz.chord/type ::seed]))
+  (spec/keys :opt-un [:scherz.brightness/tonic ::seed ::dissonance]))
 
 (defn- apply-scores
   "Picks a chord that has the lowest combined score."
@@ -87,13 +86,14 @@
        (into {})))
 
 (defn normalize-dissonance
-  "Outputs a normalized dissonance value from 0 to 1 given a base dissonance value
-   and a set of scales."
-  [dissonance scales]
+  "Returns a function that outputs a normalized dissonance value from 0 to 1 
+   given a base dissonance value and a set of scales."
+  [scales]
   (let [[min-vals max-vals] (apply map vector (map scale-dissonance scales)) 
         min-dissonance (apply min min-vals)
         max-dissonance (apply max max-vals)]
-    (-> dissonance (- min-dissonance) (/ (- max-dissonance min-dissonance)))))
+    (fn [dissonance]
+      (-> dissonance (- min-dissonance) (/ (- max-dissonance min-dissonance))))))
 
 (defn generate-chords
   [scales prev force]
@@ -104,13 +104,14 @@
         {:keys [color dissonance gravity arc incline temper]} force
         chords (mapcat (partial chord-sets prev color arc incline temper) scales)
         extent (u/extent (map b/pitch->brightness (:pitches prev)))
+        normalize-dissonance (normalize-dissonance scales)
         score-color (fn [chord]
                       (-> (b/color (:extent chord) extent)
                           (/ 5)
                           (u/abs-diff color)))
         score-dissonance (fn [chord]
                            (-> (:dissonance chord)
-                               (normalize-dissonance scales)
+                               normalize-dissonance
                                (u/abs-diff dissonance)))
         score-gravity (fn [chord]
                         (when-let [g (g/chord-gravity (:notes prev)
@@ -121,12 +122,23 @@
 
 (defn initial-chords
   "Finds the first chord of a certain type within the given scales."
-  ([scales tonic]
-   {:pre [(spec/assert (spec/* :scherz.scale/scale) scales)
+  ([scales tonic] (initial-chords scales tonic 0))
+  ([scales tonic dissonance]
+   {:pre [(spec/assert ::dissonance dissonance)
+          (spec/assert (spec/* :scherz.scale/scale) scales)
           (spec/assert :scherz.brightness/tonic tonic)]}
-   (dissoc (->> (map keyword scales)
-                (mapcat (partial c/chord-set tonic))
-                (map #(dissoc % :temper :extent :type))))))
+   (let [scales (map keyword scales)
+         chords (mapcat (partial c/chord-set tonic) scales)
+         normalize-dissonance (normalize-dissonance scales)
+         score-dissonance (fn [chord]
+                            (-> (:dissonance chord)
+                                normalize-dissonance
+                                (u/abs-diff dissonance)))]
+     (->> (map score-dissonance chords)
+          (map vector chords)
+          (u/min-by-coll second)
+          (map first)
+          (map #(dissoc % :temper :extent :type))))))
 
 (defn- next-chord
   "Finds the next chord of a progression within the given scales.
@@ -142,11 +154,11 @@
   ([scales forces] (generate-progression scales forces nil))
   ([scales forces options]
    {:pre [(spec/assert (spec/* :scherz.scale/scale) scales)
-          (spec/assert (spec/* ::force) forces)]}
-   (let [{:keys [tonic seed]
-          :or {tonic "C"
-               seed 0}} options]
+          (spec/assert (spec/* ::force) forces)
+          (spec/valid? (spec/nilable ::options) options)]}
+   (let [{:keys [tonic seed dissonance]
+          :or {tonic "C" seed 0 dissonance 0}} options]
      (reductions (partial next-chord (int seed) scales)
-                 (nth (initial-chords scales tonic) seed)
+                 (nth (initial-chords scales tonic dissonance) seed)
                  forces))))
 

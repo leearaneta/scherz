@@ -3,15 +3,15 @@
  ["src/"
   "test/"]
 
- :dependencies
- [[org.clojure/math.combinatorics "0.1.6"]]
+ ;; :dependencies
+ ;; [[org.clojure/math.combinatorics "0.1.6"]]
 
  :builds {:scherz {:target :node-library
                    :output-to "out/scherz/lib.js"
                    :exports-var scherz.exports/scherz
                    :compiler-options {:elide-asserts false}}
           :scherz.util {:target :node-library
-                        :output-to "out/scherz.brightness/lib.js"
+                        :output-to "out/scherz.util/lib.js"
                         :exports-var scherz.exports/util
                         :compiler-options {:elide-asserts false}}}}
 
