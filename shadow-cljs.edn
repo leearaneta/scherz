@@ -8,11 +8,10 @@
 
  :builds {:scherz {:target :node-library
                    :output-to "out/scherz/lib.js"
-                   :exports {:util scherz.exports/util
-                             :generate scherz.exports/generate}
+                   :exports-var scherz.exports/scherz
                    :compiler-options {:elide-asserts false}}
-          :scherz.brightness {:target :node-library
-                              :output-to "out/scherz.brightness/lib.js"
-                              :exports-var scherz.exports/brightness
-                              :compiler-options {:elide-asserts false}}}}
+          :scherz.util {:target :node-library
+                        :output-to "out/scherz.brightness/lib.js"
+                        :exports-var scherz.exports/util
+                        :compiler-options {:elide-asserts false}}}}
 

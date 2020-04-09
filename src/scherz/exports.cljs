@@ -10,13 +10,14 @@
   (fn [& args]
     (clj->js (apply f (map #(js->clj % :keywordize-keys true) args)))))
 
-(def util #js {:scales (clj->js scales)})
-(def generate #js {:initialChords (fnjs initial-chords)
-                   :generateChords (fnjs generate-chords)
-                   :generateProgression (fnjs generate-progression)})
+(def scherz #js {:initialChords (fnjs initial-chords)
+                 :generateChords (fnjs generate-chords)
+                 :generateProgression (fnjs generate-progression)
+                 :scales (clj->js scales)})
 
-(def brightness #js {:pitchToBrightness (fnjs pitch->brightness)
-                     :brightnessToPitch (fnjs brightness->pitch)
-                     :fifthsAbove (fnjs fifths-above)
-                     :fifthsBetween (fnjs fifths-between)
-                     :validatePitch (fnjs valid-pitch?)})
+(def util #js {:pitchToBrightness (fnjs pitch->brightness)
+               :brightnessToPitch (fnjs brightness->pitch)
+               :fifthsAbove (fnjs fifths-above)
+               :fifthsBetween (fnjs fifths-between)
+               :validatePitch (fnjs valid-pitch?)
+               :scales (clj->js scales)})
