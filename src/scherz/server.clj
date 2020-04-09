@@ -7,8 +7,7 @@
             [ring.middleware.json :refer [wrap-json-response wrap-json-body]]
             [environ.core :refer [env]]
             [scherz.scale :refer [scales]]
-            [scherz.chord :refer [possible-chord-types]]
-            [scherz.generate :refer [initial-chord generate-chords
+            [scherz.generate :refer [initial-chords generate-chords
                                      generate-progression]]))
 
 (defn handle-errors [handler]
@@ -23,16 +22,13 @@
 (defroutes routes
   (GET "/scales" []
        (response scales))
-  (GET "/possible-chord-types" {body :body}
-       (response (possible-chord-types (:scales body))))
   (GET "/generate-progression" {body :body}
        (response (generate-progression (:scales body)
                                        (:tensions body)
                                        (:options body))))
-  (GET "/initial-chord" {body :body}
-       (response (initial-chord (:scales body)
-                                (:tonic body)
-                                (:type body))))
+  (GET "/initial-chords" {body :body}
+       (response (initial-chords (:scales body)
+                                (:tonic body))))
   (GET "/generate-chords" {body :body}
        (response (generate-chords (:scales body)
                                   (:prev body)

@@ -22,9 +22,9 @@
                                :opt-un [::arc ::incline ::temper]))
 
 (spec/def ::seed int?)
-(spec/def ::options (spec/keys :opt-un [:scherz.brightness/tonic
-                                        :scherz.chord/type
-                                        ::seed]))
+(spec/def ::options
+  (spec/keys :opt-un
+             [:scherz.brightness/tonic :scherz.chord/type ::seed]))
 
 (defn- apply-scores
   "Picks a chord that has the lowest combined score."
@@ -82,7 +82,7 @@
   "Mapping of scales to tuples of (minimum-dissonance, maximum-dissonance).
    These tuples are used to normalize dissonance between multiple scales."
   (->> s/scales
-       (map (comp u/extent (partial map :dissonance) c/base-chord-sets))
+       (map (comp u/extent (partial map :dissonance) c/c-chords))
        (map vector s/scales)
        (into {})))
 
@@ -116,24 +116,17 @@
                         (when-let [g (g/chord-gravity (:notes prev)
                                                       (:notes chord))]
                           (max (- gravity g) 0)))]
-    (map (fn [chord] (dissoc chord :temper :extent :type))
+    (map #(dissoc % :temper :extent :type)
          (apply-scores chords score-color score-dissonance score-gravity))))
 
-(defn initial-chord
+(defn initial-chords
   "Finds the first chord of a certain type within the given scales."
   ([scales tonic]
-   {:pre [(spec/assert (spec/* :scherz.scale/scale) scales)]}
-   (initial-chord scales tonic (name (first (c/possible-chord-types scales)))))
-  ([scales tonic type]
    {:pre [(spec/assert (spec/* :scherz.scale/scale) scales)
-          (spec/assert :scherz.brightness/tonic tonic)
-          (spec/assert :scherz.chord/type type)
-          (c/possible-chord-type? scales type)]}
+          (spec/assert :scherz.brightness/tonic tonic)]}
    (dissoc (->> (map keyword scales)
                 (mapcat (partial c/chord-set tonic))
-                (filter (comp (partial = type) :type))
-                (u/find-coll (comp (partial = 0) :inversion)))
-           :temper :extent :type)))
+                (map #(dissoc % :temper :extent :type))))))
 
 (defn- next-chord
   "Finds the next chord of a progression within the given scales.
@@ -150,10 +143,10 @@
   ([scales tensions options]
    {:pre [(spec/assert (spec/* :scherz.scale/scale) scales)
           (spec/assert (spec/* ::tension) tensions)]}
-   (let [{:keys [tonic type seed]
+   (let [{:keys [tonic seed]
           :or {tonic "C"
-               type (name (first (c/possible-chord-types scales)))
                seed 0}} options]
      (reductions (partial next-chord (int seed) scales)
-                 (initial-chord scales tonic type)
+                 (nth (initial-chords scales tonic) seed)
                  tensions))))
+
