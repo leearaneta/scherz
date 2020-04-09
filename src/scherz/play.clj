@@ -18,6 +18,6 @@
                 {:color 0.4 :dissonance 0.4 :gravity 0.25}
                 {:color 0 :dissonance 0.8 :gravity 0}
                 {:color 0.2 :dissonance 0.2 :gravity 0.25}]
-      options {:tonic "F#" :seed 1}
+      options {:tonic "F#" :seed 6}
       progression (generate-progression scales tensions options)]
   (play-progression progression))

@@ -3,7 +3,6 @@
             #?(:clj [clojure.spec.alpha :as spec]
                :cljs [cljs.spec.alpha :as spec]) 
             [clojure.set :refer [difference]]
-            [clojure.string :refer [join replace]]
             [clojure.math.combinatorics :refer [combinations]]
             [scherz.util :refer [find-coll insert abs-diff
                                  min-by distinct-by extent]]
@@ -250,35 +249,7 @@
        (r/remove (comp any-muddy-intervals? :notes))
        r/foldcat))
 
-(defn possible-chord-types
-  "Outputs all possible chord types given a set of scales."
-  [scales]
-  {:pre [(spec/assert (spec/* :scherz.scale/scale) scales)]}
-  (->> (map keyword scales)
-       (mapcat (fn [scale]
-                 (let [note-ct (count (scale-intervals scale))]
-                   (for [shape (chord-shapes note-ct)
-                         degree (range 1 (inc note-ct))]
-                     (chord-type (base-notes scale shape degree))))))
-       distinct
-       (remove nil?)))
-
-(defn possible-chord-type? [scales type]
-  (some (partial = (keyword type))
-        (possible-chord-types scales)))
-
-(def type-regexp
-  (let [types (->> (keys chord-types) (map name) (join "|"))
-        type-group (str "(" (replace types "+" "\\+") ")")
-        extensions (join "|" (vals extensions))
-        extension-group (str "(add(" extensions "))?")]
-    (str type-group extension-group "$")))
-
-(defn- valid-type? [type]
-  (some? (re-matches (re-pattern type-regexp) type)))
-
 (spec/def ::notes (spec/* int?))
-(spec/def ::type valid-type?)
 (spec/def ::chord (spec/keys :req-un [::notes
                                       :scherz.brightness/pitches
                                       :scherz.brightness/tonic

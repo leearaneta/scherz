@@ -66,22 +66,22 @@
   [chord]
   (let [voice-notes (fn [notes]
                       (if (= (count notes) 4)
-                        (-> notes
-                            (assoc 1 (notes 2))
-                            (assoc 2 (notes 3))
-                            (assoc 3 (+ 12 (notes 1))))
-                        (-> notes
-                            (assoc 1 (notes 2))
-                            (assoc 2 (+ 12 (notes 1))))))
+                        (assoc notes
+                               1 (notes 2)
+                               2 (notes 3)
+                               3 (+ 12 (notes 1)))
+                        (assoc notes
+                               1 (notes 2)
+                               2 (+ 12 (notes 1)))))
         voice-pitches (fn [pitches]
                         (if (= (count pitches) 4)
-                          (-> pitches
-                              (assoc 1 (pitches 2))
-                              (assoc 2 (pitches 3))
-                              (assoc 3 (pitches 1)))
-                          (-> pitches
-                              (assoc 1 (pitches 2))
-                              (assoc 2 (pitches 1)))))]
+                          (assoc pitches
+                                 1 (pitches 2)
+                                 2 (pitches 3)
+                                 3 (pitches 1))
+                          (assoc pitches
+                                 1 (pitches 2)
+                                 2 (pitches 1))))]
     (-> chord
         (update :notes voice-notes)
         (update :pitches voice-pitches))))
