@@ -24,15 +24,15 @@
        (response scales))
   (GET "/generate-progression" {body :body}
        (response (generate-progression (:scales body)
-                                       (:tensions body)
+                                       (:forces body)
                                        (:options body))))
   (GET "/initial-chords" {body :body}
        (response (initial-chords (:scales body)
-                                (:tonic body))))
+                                 (:tonic body))))
   (GET "/generate-chords" {body :body}
        (response (generate-chords (:scales body)
                                   (:prev body)
-                                  (:tension body))))
+                                  (:force body))))
   (ANY "*" []
        {:status 404 :body "Not found :("}))
 

@@ -18,7 +18,7 @@ in the repl, we can generate a progression with the required parameters.  for ex
   
 ```
 const { generate } = require('scherz')
-const tensions = [
+const forces = [
     { color: 0, dissonance: 0.2, gravity: 0.5 },
     { color: 0.4, dissonance: 0.4, gravity: 0.25 },
     { color: 0, dissonance: 0.8, gravity: 0 },
@@ -26,7 +26,7 @@ const tensions = [
 ]
 const scales = ['lydian']
 const options = { type: "M7", tonic: "D" }
-generate.generateProgression(scales, tensions, options)
+generate.generateProgression(scales, forces, options)
 =>  [ { scale: 'lydian',
         inversion: 0,
         name: 'DM7',
@@ -65,14 +65,13 @@ generate.generateProgression(scales, tensions, options)
 ```
   
 `generateProgression` takes in three parameters:
-  - a list of objects (referred to as tensions), 
+  - a list of objects (referred to as forces), 
     - `color` `consonance` and `gravity` are required
     - each value corresponding to these keys must be between 0 and 1
   - a list of scales to choose chords from, `["lydian", "diminished"]` for example
     -  `util.scales` contains a list of all possible scales
   - an optional "options" object, which takes contains three keys:
     - `tonic` the root of the initial chord (defaults to `"C"`)
-    - `type` the type of the initial chord, eg. `"M7"`
     - `seed` an integer that determines which chord is chosen in case of a tie
 
 if specified, the initial chord's type must be present in at least one of the scales given.  we can call `util.possibleChordTypes` to verify:
@@ -88,9 +87,9 @@ we can generate chords one by one using `generateChords` which also takes in thr
 
 ```
 const scales = ['melodic-minor', 'augmented']
-const initialChord = generate.initialChord(scales, "Db", "m7")
-const tension = { color: 0.25, dissonance: 0.5, gravity: 0.5 }
-generate.generateChords(scales, initialChord, tension)
+const initialChord = generate.initialChords(scales, "Db")[0]
+const force = { color: 0.25, dissonance: 0.5, gravity: 0.5 }
+generate.generateChords(scales, initialChord, force)
 =>  [ { scale: 'melodic-minor',
         inversion: 0,
         name: 'Bbm7/Eb',
@@ -114,7 +113,7 @@ generate.generateChords(scales, initialChord, tension)
         notes: [ 61, 71, 75, 78, 80 ] } ]
 ```
 
-tensions can have three optional keys: `arc` `temper` and `incline`, which must have either "`asc`" or "`desc`" as their corresponding values
+forces can have three optional keys: `arc` `temper` and `incline`, which must have either `"asc"` or `"desc"` as their corresponding values
   - `arc: "asc"` ensures that generated chords modulate only to brighter keys
   - `temper: "asc"` attempts to generate "happy" sounding chords
   - `incline: "asc"` generates chords that are spatially higher than the previous chord

@@ -2,7 +2,7 @@
   (:require
    [scherz.scale :refer [scales]]
    [scherz.brightness :refer [pitch->brightness brightness->pitch
-                              fifths-above fifths-between]]
+                              fifths-above fifths-between valid-pitch?]]
    [scherz.generate :refer [initial-chords generate-chords
                             generate-progression]]))
 
@@ -18,4 +18,5 @@
 (def brightness #js {:pitchToBrightness (fnjs pitch->brightness)
                      :brightnessToPitch (fnjs brightness->pitch)
                      :fifthsAbove (fnjs fifths-above)
-                     :fifthsBetween (fnjs fifths-between)})
+                     :fifthsBetween (fnjs fifths-between)
+                     :validatePitch (fnjs valid-pitch?)})

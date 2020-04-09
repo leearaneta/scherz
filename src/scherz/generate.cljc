@@ -8,18 +8,18 @@
             [scherz.brightness :as b]
             [scherz.chord :as c]))
 
-(spec/def ::tension-val (spec/and number? #(<= 0 % 1)))
-(spec/def ::tension-direction #{"asc" "desc"})
+(spec/def ::force-val (spec/and number? #(<= 0 % 1)))
+(spec/def ::force-direction #{"asc" "desc"})
 
-(spec/def ::color ::tension-val)
-(spec/def ::dissonance ::tension-val)
-(spec/def ::gravity ::tension-val)
-(spec/def ::arc ::tension-direction)
-(spec/def ::incline ::tension-direction)
-(spec/def ::temper ::tension-direction)
+(spec/def ::color ::force-val)
+(spec/def ::dissonance ::force-val)
+(spec/def ::gravity ::force-val)
+(spec/def ::arc ::force-direction)
+(spec/def ::incline ::force-direction)
+(spec/def ::temper ::force-direction)
 
-(spec/def ::tension (spec/keys :req-un [::color ::dissonance ::gravity]
-                               :opt-un [::arc ::incline ::temper]))
+(spec/def ::force (spec/keys :req-un [::color ::dissonance ::gravity]
+                             :opt-un [::arc ::incline ::temper]))
 
 (spec/def ::seed int?)
 (spec/def ::options
@@ -96,12 +96,12 @@
     (-> dissonance (- min-dissonance) (/ (- max-dissonance min-dissonance)))))
 
 (defn generate-chords
-  [scales prev tension]
+  [scales prev force]
   {:pre [(spec/assert (spec/* :scherz.scale/scale) scales)
          (spec/assert :scherz.chord/chord prev)
-         (spec/assert ::tension tension)]}
+         (spec/assert ::force force)]}
   (let [scales (map keyword scales)
-        {:keys [color dissonance gravity arc incline temper]} tension
+        {:keys [color dissonance gravity arc incline temper]} force
         chords (mapcat (partial chord-sets prev color arc incline temper) scales)
         extent (u/extent (map b/pitch->brightness (:pitches prev)))
         score-color (fn [chord]
@@ -131,22 +131,22 @@
 (defn- next-chord
   "Finds the next chord of a progression within the given scales.
    Seed is used if there is a tie between possible chord choices."
-  ([scales prev tension] (next-chord 0 scales prev tension))
-  ([seed scales prev tension]
-   (let [chords (generate-chords scales prev tension)]
+  ([scales prev force] (next-chord 0 scales prev force))
+  ([seed scales prev force]
+   (let [chords (generate-chords scales prev force)]
      (get (vec chords)
           (mod seed (count chords))))))
 
 (defn generate-progression
   "Repeatedly calls next-chord to generate a chord progression."
-  ([scales tensions] (generate-progression scales tensions nil))
-  ([scales tensions options]
+  ([scales forces] (generate-progression scales forces nil))
+  ([scales forces options]
    {:pre [(spec/assert (spec/* :scherz.scale/scale) scales)
-          (spec/assert (spec/* ::tension) tensions)]}
+          (spec/assert (spec/* ::force) forces)]}
    (let [{:keys [tonic seed]
           :or {tonic "C"
                seed 0}} options]
      (reductions (partial next-chord (int seed) scales)
                  (nth (initial-chords scales tonic) seed)
-                 tensions))))
+                 forces))))
 
