@@ -3,6 +3,7 @@
             #?(:clj [clojure.spec.alpha :as spec]
                :cljs [cljs.spec.alpha :as spec]) 
             [clojure.set :refer [difference]]
+            [clojure.string :refer [replace]]
             [clojure.math.combinatorics :refer [combinations]]
             [scherz.util :refer [find-coll insert abs-diff
                                  min-by distinct-by extent]]
@@ -136,9 +137,9 @@
   "Returns true if any three consecutive notes are a whole step or less away."
   [notes]
   (let [clustered? (fn [pairs]
-                       (->> pairs
-                            (map (partial apply abs-diff))
-                            (every? (partial > 3))))]
+                     (->> pairs
+                          (map (partial apply abs-diff))
+                          (every? (partial > 3))))]
     (->> (partition 3 1 notes)
          (map (partial partition 2 1))
          (some clustered?))))
@@ -175,6 +176,16 @@
                    :else false))]
     (some muddy? (partition 2 1 notes))))
 
+(defn- any-overlapping-notes?
+  "Returns true if any notes will be rendered on the same line in a staff."
+  [{:keys [pitches notes]}]
+  (let [overlapping? (fn [[[pitch1 pitch2] [note1 note2]]]
+                       (and (= (first pitch1) (first pitch2))
+                            (<= (abs-diff note1 note2) 1)))]
+    (->> (partition 2 1 notes)
+         (map vector (partition 2 1 pitches))
+         (some overlapping?))))
+
 (defn- base-chords
   "Iterates over every shape, degree, and inversion in a scale to generate chords."
   [scale]
@@ -204,6 +215,7 @@
        (remove (comp any-sevenths? :notes))
        (remove (comp any-minor-ninths? :notes))
        (remove (comp negligible-bass? :notes))
+       (remove any-overlapping-notes?)
        (map (fn [{:keys [notes pitches] :as chord}]
               (assoc chord
                      :dissonance (dissonance notes)
@@ -237,7 +249,9 @@
                                  (str (when bass
                                         (str "/" (fifths-above brightness bass))))
                                  (str (when degree
-                                        (str "add" degree))))))
+                                        (str "add" degree)))
+                                 (replace "#" "♯")
+                                 (replace "b" "♭"))))
               (dissoc :root :bass :degree)))))
 
 (defn chord-set
