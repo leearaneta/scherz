@@ -95,6 +95,11 @@
     (fn [dissonance]
       (-> dissonance (- min-dissonance) (/ (- max-dissonance min-dissonance))))))
 
+(defn sort-chords [chords]
+  (let [grouped (group-by :name chords)]
+    (into (vec (flatten (vals (dissoc grouped nil))))
+          (grouped nil))))
+
 (defn generate-chords
   [scales prev force]
   {:pre [(spec/assert (spec/* :scherz.scale/scale) scales)
@@ -103,10 +108,10 @@
   (let [scales (map keyword scales)
         {:keys [color dissonance gravity arc incline temper]} force
         chords (mapcat (partial chord-sets prev color arc incline temper) scales)
-        extent (u/extent (map b/pitch->brightness (:pitches prev)))
+        cof-extent (u/extent (map b/pitch->brightness (:pitches prev)))
         normalize-dissonance (normalize-dissonance scales)
         score-color (fn [chord]
-                      (-> (b/color (:extent chord) extent)
+                      (-> (b/color (:cof-extent chord) cof-extent)
                           (/ 5)
                           (u/abs-diff color)))
         score-dissonance (fn [chord]
@@ -117,8 +122,9 @@
                         (when-let [g (g/chord-gravity (:notes prev)
                                                       (:notes chord))]
                           (max (- gravity g) 0)))]
-    (map #(dissoc % :temper :extent :type)
-         (apply-scores chords score-color score-dissonance score-gravity))))
+    (->> (apply-scores chords score-color score-dissonance score-gravity)
+         sort-chords
+         (map #(dissoc % :temper :cof-extent :type)))))
 
 (defn initial-chords
   "Finds the first chord of a certain type within the given scales."
@@ -138,7 +144,8 @@
           (map vector chords)
           (u/min-by-coll second)
           (map first)
-          (map #(dissoc % :temper :extent :type))))))
+          sort-chords
+          (map #(dissoc % :temper :cof-extent :type))))))
 
 (defn- next-chord
   "Finds the next chord of a progression within the given scales.
@@ -161,4 +168,3 @@
      (reductions (partial next-chord (int seed) scales)
                  (nth (initial-chords scales tonic dissonance) seed)
                  forces))))
-

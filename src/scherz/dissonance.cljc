@@ -68,3 +68,5 @@
        (map (fn [[prime exponent]] (* exponent (dec prime))))
        (reduce +)))
 
+(dissonance '(0 7 16 17))
+(dissonance '(7 12 16 21))

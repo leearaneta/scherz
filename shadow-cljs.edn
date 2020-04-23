@@ -3,8 +3,8 @@
  ["src/"
   "test/"]
 
- ;; :dependencies
- ;; [[org.clojure/math.combinatorics "0.1.6"]]
+ :dependencies
+ [[org.clojure/math.combinatorics "0.1.6"]]
 
  :builds {:scherz {:target :node-library
                    :output-to "out/scherz/lib.js"

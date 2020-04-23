@@ -42,9 +42,9 @@
 (defn sink-octave
   "Brings a set of notes down to the lowest octave possible."
   [notes]
-  (if (some #(< % 12) notes)
+  (if (some #(< % 0) notes)
     notes
-    (recur (map #(- % 12) notes))))
+    (recur (vec (map #(- % 12) notes)))))
 
 (defn- transfer-chord
   "Moves notes in a chord by the given amount of octaves."
@@ -61,30 +61,29 @@
          (filter within-range?)
          (map (partial assoc chord :notes)))))
 
-(defn open-voicing
-  "Raises the second note of a chord up an octave."
-  [chord]
-  (let [voice-notes (fn [notes]
-                      (if (= (count notes) 4)
-                        (assoc notes
-                               1 (notes 2)
-                               2 (notes 3)
-                               3 (+ 12 (notes 1)))
-                        (assoc notes
-                               1 (notes 2)
-                               2 (+ 12 (notes 1)))))
-        voice-pitches (fn [pitches]
-                        (if (= (count pitches) 4)
-                          (assoc pitches
-                                 1 (pitches 2)
-                                 2 (pitches 3)
-                                 3 (pitches 1))
-                          (assoc pitches
-                                 1 (pitches 2)
-                                 2 (pitches 1))))]
-    (-> chord
-        (update :notes voice-notes)
-        (update :pitches voice-pitches))))
+(defn open-voicings
+  [invertf coll]
+  (let [voice (fn [n]
+                (let [inverted (invertf (subvec coll 1) n)]
+                  (into [inverted]
+                        (if (>= (count inverted) 3)
+                          (open-voicings invertf inverted)
+                          []))))]
+    (->> (range (dec (count coll)))
+         (mapcat voice)
+         (map (partial into [(first coll)]))
+         distinct)))
+
+(defn apply-voicings
+  [{:keys [notes pitches] :as chord}]
+  (let [note-voicings (open-voicings note-invert notes)
+        pitch-voicings (open-voicings pitch-invert pitches)
+        update-chord (fn [[new-notes new-pitches]]
+                       (assoc chord
+                              :notes new-notes
+                              :pitches new-pitches))]
+    (map update-chord
+         (map vector note-voicings pitch-voicings))))
 
 (defn note-distance [target-note source-note]
   (cond (<= 12 (- target-note source-note))

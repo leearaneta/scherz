@@ -17,7 +17,7 @@ scherz can generate chord progressions using color, dissonance, and gravity
 in the repl, we can generate a progression with the required parameters.  for example:
   
 ```
-const { generate } = require('scherz')
+const { generateProgression } = require('scherz')
 const forces = [
     { color: 0, dissonance: 0.2, gravity: 0.5 },
     { color: 0.4, dissonance: 0.4, gravity: 0.25 },
@@ -25,43 +25,43 @@ const forces = [
     { color: 0.2, dissonance: 0.2, gravity: 0.25 },
 ]
 const scales = ['lydian']
-const options = { type: "M7", tonic: "D" }
-generate.generateProgression(scales, forces, options)
+const options = { type: "M7", tonic: "D", dissonance: 0.15 }
+generateProgression(scales, forces, options)
 =>  [ { scale: 'lydian',
         inversion: 0,
-        name: 'DM7',
+        name: 'AM',
         tonic: 'D',
-        pitches: [ 'D', 'A', 'C#', 'F#' ],
-        dissonance: 9,
-        notes: [ 50, 57, 61, 66 ] },
+        pitches: [ 'A', 'E', 'C#', 'A' ],
+        dissonance: 10,
+        notes: [ 45, 52, 61, 69 ] },
       { scale: 'lydian',
-        inversion: 2,
-        name: 'Bm7',
+        inversion: 0,
+        name: 'F♯m/B',
         tonic: 'D',
-        pitches: [ 'F#', 'B', 'D', 'A' ],
-        dissonance: 11,
-        notes: [ 54, 59, 62, 69 ] },
+        pitches: [ 'B', 'F#', 'C#', 'A' ],
+        dissonance: 12,
+        notes: [ 47, 54, 61, 69 ] },
       { scale: 'lydian',
-        inversion: 2,
-        name: 'EM/F#',
+        inversion: 3,
+        name: 'G♯m7add4',
         tonic: 'E',
-        pitches: [ 'F#', 'B', 'E', 'G#' ],
+        pitches: [ 'F#', 'B', 'C#', 'G#', 'D#' ],
         dissonance: 15,
-        notes: [ 54, 59, 64, 68 ] },
+        notes: [ 54, 59, 61, 68, 75 ] },
       { scale: 'lydian',
         inversion: 1,
-        name: 'C#m/D#',
+        name: 'F♯7sus4/D♯',
         tonic: 'E',
-        pitches: [ 'D#', 'E', 'G#', 'C#' ],
-        dissonance: 23,
-        notes: [ 63, 64, 68, 73 ] },
+        pitches: [ 'D#', 'B', 'E', 'C#', 'F#' ],
+        dissonance: 24,
+        notes: [ 51, 59, 64, 73, 78 ] },
       { scale: 'lydian',
-        inversion: 2,
-        name: 'BMadd7',
+        inversion: 1,
+        name: 'G♯m7add9',
         tonic: 'B',
-        pitches: [ 'F#', 'D#', 'A#', 'B' ],
+        pitches: [ 'B', 'G#', 'D#', 'F#', 'A#' ],
         dissonance: 11,
-        notes: [ 54, 63, 70, 71 ] } ]
+        notes: [ 47, 56, 63, 66, 70 ] } ]
 ```
   
 `generateProgression` takes in three parameters:
@@ -73,12 +73,7 @@ generate.generateProgression(scales, forces, options)
   - an optional "options" object, which takes contains three keys:
     - `tonic` the root of the initial chord (defaults to `"C"`)
     - `seed` an integer that determines which chord is chosen in case of a tie
-
-if specified, the initial chord's type must be present in at least one of the scales given.  we can call `util.possibleChordTypes` to verify:
-```
-util.possibleChordTypes(['lydian', 'diminished'])
-=> ['M', 'm', '°', 'M7', '7', 'm7', 'ø7', 'M7sus2', '7sus2', '7sus4', 'M7sus4', '°7', '°M7']
-```
+    - `dissonance` a number between 0 and 1 that affects the dissonance of the first chord
 
 we can generate chords one by one using `generateChords` which also takes in three parameters and outputs a list of chords matching the corresponding color, consonance, and gravity
 - a list of scales to choose chords from
@@ -86,31 +81,21 @@ we can generate chords one by one using `generateChords` which also takes in thr
 - an object with the keys `color` `consonance` and `gravity`
 
 ```
+const { initialChords, generateChords } = require('scherz')
 const scales = ['melodic-minor', 'augmented']
-const initialChord = generate.initialChords(scales, "Db")[0]
+
+// initialChord optionally takes in a third parameter that corresponds to dissonance
+const initialChord = initialChords(scales, "Db", 0.25)[0]
+
 const force = { color: 0.25, dissonance: 0.5, gravity: 0.5 }
-generate.generateChords(scales, initialChord, force)
+generateChords(scales, initialChord, force)
 =>  [ { scale: 'melodic-minor',
         inversion: 0,
-        name: 'Bbm7/Eb',
+        name: 'D♭7sus2add13',
         tonic: 'Ab',
-        pitches: [ 'Eb', 'Bb', 'Db', 'F', 'Ab' ],
-        dissonance: 16,
-        notes: [ 63, 70, 73, 77, 80 ] },
-      { scale: 'melodic-minor',
-        inversion: 0,
-        name: 'CbM/Db',
-        tonic: 'Gb',
-        pitches: [ 'Db', 'Cb', 'Eb', 'Gb' ],
-        dissonance: 16,
-        notes: [ 61, 71, 75, 78 ] },
-      { scale: 'melodic-minor',
-        inversion: 1,
-        name: 'Abm7/Db',
-        tonic: 'Gb',
-        pitches: [ 'Db', 'Cb', 'Eb', 'Gb', 'Ab' ],
-        dissonance: 16,
-        notes: [ 61, 71, 75, 78, 80 ] } ]
+        pitches: [ 'Db', 'Cb', 'Ab', 'Bb', 'Eb' ],
+        dissonance: 18,
+        notes: [ 49, 59, 68, 70, 75 ] } ]
 ```
 
 forces can have three optional keys: `arc` `temper` and `incline`, which must have either `"asc"` or `"desc"` as their corresponding values
