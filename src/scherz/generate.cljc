@@ -123,6 +123,7 @@
                                                       (:notes chord))]
                           (max (- gravity g) 0)))]
     (->> (apply-scores chords score-color score-dissonance score-gravity)
+         (u/distinct-by (comp g/sink-octave :notes))
          sort-chords
          (map #(dissoc % :temper :cof-extent :type)))))
 
