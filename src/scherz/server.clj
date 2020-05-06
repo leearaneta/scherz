@@ -32,9 +32,9 @@
                                   (:tonic body)
                                   (:dissonance body))))
   (POST "/generate-chords" {body :body}
-       (response (generate-chords (:scales body)
-                                  (:prev body)
-                                  (:force body))))
+        (response (generate-chords (:scales body)
+                                   (:prev body)
+                                   (:force body))))
   (ANY "*" []
        {:status 404 :body "Not found :("}))
 
@@ -54,4 +54,6 @@
 
 ; (.stop server)
 ; (def server (-main))
+
+
 

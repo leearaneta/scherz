@@ -13,12 +13,12 @@
     (play-chord chord)
     (Thread/sleep 750)))
 
-(let [scales [:major]
-      forces [{:color 0 :dissonance 0.2 :gravity 0}
-              {:color 0.4 :dissonance 0.4 :gravity 0.25}
+(let [scales [:diatonic]
+      forces [{:color 0 :dissonance 0.25 :gravity 0}
+              {:color 0.4 :dissonance 0.5 :gravity 0.25}
               {:color 0.2 :dissonance 0.8 :gravity 0}
-              {:color 0 :dissonance 0.2 :gravity 0.25}]
-      options {:tonic "C" :seed 0 :dissonance 0.1}
+              {:color 0 :dissonance 0.5 :gravity 0.25}]
+      options {:seed 0 :dissonance 0.1}
       progression (generate-progression scales forces options)]
   (play-progression progression))
 

@@ -97,8 +97,3 @@ generateChords(scales, initialChord, force)
         dissonance: 18,
         notes: [ 49, 59, 68, 70, 75 ] } ]
 ```
-
-forces can have three optional keys: `arc` `temper` and `incline`, which must have either `"asc"` or `"desc"` as their corresponding values
-  - `arc: "asc"` ensures that generated chords modulate only to brighter keys
-  - `temper: "asc"` attempts to generate "happy" sounding chords
-  - `incline: "asc"` generates chords that are spatially higher than the previous chord

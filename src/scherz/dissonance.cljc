@@ -40,13 +40,11 @@
        notes))
 
 (defn- chord-terms [ratios]
-  (let [evaluate-ratio (fn [ratio] (/ (:numerator ratio) (:denominator ratio)))
-        terms (sort-by evaluate-ratio ratios)
-        g (gcd-ratios terms)
+  (let [g (gcd-ratios ratios)
         div #?(:clj quot :cljs (fn [n d] (Math/floor (/ n d))))
-        simplify (fn [term]
-                   (-> (:numerator term) (div g) (/ (:denominator term)) int))]
-    (map simplify terms)))
+        simplify (fn [ratio]
+                   (-> (:numerator ratio) (div g) (/ (:denominator ratio)) int))]
+    (map simplify ratios)))
 
 (defn prime-factors
   ([n] (prime-factors 2 n))
@@ -68,5 +66,3 @@
        (map (fn [[prime exponent]] (* exponent (dec prime))))
        (reduce +)))
 
-(dissonance '(0 7 16 17))
-(dissonance '(7 12 16 21))

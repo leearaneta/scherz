@@ -66,4 +66,7 @@
 (defn extent [coll]
   [(apply min coll) (apply max coll)])
 
+(defn round [n]
+  (Math/round (double n)))
+
 (spec/check-asserts true)

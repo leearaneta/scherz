@@ -32,7 +32,8 @@
               (filter (partial not= 0))
               (map (partial / 1))))
     (let [[four-notes five-notes] (sort-by count [source-notes target-notes])]
-      (avg (->> [(conj (vec four-notes) infinity) (conj four-notes infinity)]
+      (avg (->> [(conj (vec four-notes) infinity)
+                 (conj (apply list four-notes) infinity)]
                 (map (partial map abs-diff five-notes))
                 (apply map vector)
                 (map (partial apply min))

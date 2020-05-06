@@ -9,7 +9,7 @@
                                  min-by distinct-by extent]]
             [scherz.scale :refer [scales scale-intervals]]
             [scherz.brightness :refer [pitch->brightness fifths-above
-                                       pitch-chord pitch-scale temper]]
+                                       pitch-chord pitch-scale]]
             [scherz.gravity :refer [condense sink-octave note-invert pitch-invert
                                     apply-voicings transfer-octaves note-distance]]
             [scherz.dissonance :refer [dissonance]]))
@@ -113,19 +113,19 @@
 
 (defn add-extensions
   [{:keys [scale tonic pitches notes root] :as chord}]
-  (let [extensions (fn [pitch]
-                     (->> (- (pitch->midi pitch) 12)
-                          (iterate (partial + 12))
-                          (drop-while (partial >= (- (first notes) 12)))
-                          (take-while (partial > (+ (last notes) 12)))
-                          (remove (partial contains? (set notes)))
-                          (map (partial vector pitch))))
+  (let [pitch->extensions (fn [pitch]
+                            (->> (- (pitch->midi pitch) 12)
+                                 (iterate (partial + 12))
+                                 (drop-while (partial >= (- (first notes) 12)))
+                                 (take-while (partial > (+ (last notes) 12)))
+                                 (remove (partial contains? (set notes)))
+                                 (map (partial vector pitch))))
         excluded-pitches (if (= (count notes) 3)
                            (disj (set pitches) root)
                            (set pitches))]
-    (->> excluded-pitches
-         (difference (set (pitch-scale tonic scale)))
-         (mapcat extensions)
+    (->> (difference (set (pitch-scale tonic scale))
+                     excluded-pitches)
+         (mapcat pitch->extensions)
          (map (partial add-extension chord)))))
 
 (defn- chord-priority
@@ -196,7 +196,6 @@
          (map vector (partition 2 1 pitches))
          (some overlapping?))))
 
-
 (defn- base-chords
   "Iterates over every shape, degree, and inversion in a scale to generate chords."
   [scale]
@@ -230,7 +229,6 @@
        (map (fn [{:keys [notes pitches] :as chord}]
               (assoc chord
                      :dissonance (dissonance notes)
-                     :temper (temper pitches)
                      :cof-extent (extent (map pitch->brightness pitches)))))))
 
 (def c-chords
@@ -251,7 +249,8 @@
           (assoc :tonic tonic
                  :notes (map (partial + note) notes)
                  :pitches (map (partial fifths-above brightness) pitches)
-                 :cof-extent (map (partial + brightness) cof-extent)
+                 :cof-extent [(+ brightness (first cof-extent))
+                              (+ brightness (second cof-extent))]
                  :type (when (and (some? type) (nil? bass))
                          (str (name type) (when degree (str "add" degree))))
                  :name (when type
@@ -280,4 +279,5 @@
 (spec/def ::chord (spec/keys :req-un [::notes
                                       :scherz.brightness/pitches
                                       :scherz.brightness/tonic
+                                      :scherz.brightness/cof-extent
                                       :scherz.scale/scale]))
