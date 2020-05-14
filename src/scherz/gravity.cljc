@@ -22,7 +22,7 @@
     (recur (conj (subvec pitches 1) (first pitches))
            (dec shift))))
 
-(defn chord-gravity
+(defn gravity
   "Measures, from 0 to 1, how spatially close two sets of notes are.
   More half step resolutions results in higher gravity."
   [source-notes target-notes]
@@ -63,6 +63,7 @@
          (map (partial assoc chord :notes)))))
 
 (defn open-voicings
+  "Recursively inverts the tail of a chord to produce \"open\" voicings."
   [invertf coll]
   (let [voice (fn [n]
                 (let [inverted (invertf (subvec coll 1) n)]
@@ -85,10 +86,3 @@
                               :pitches new-pitches))]
     (map update-chord
          (map vector note-voicings pitch-voicings))))
-
-(defn note-distance [target-note source-note]
-  (cond (<= 12 (- target-note source-note))
-        (recur (- target-note 12) source-note)
-        (< target-note source-note)
-        (recur target-note (- source-note 12))
-        :else (- target-note source-note)))

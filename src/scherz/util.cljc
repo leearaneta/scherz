@@ -46,7 +46,7 @@
     (min-by (comp inverse f) coll)))
 
 (defn map-vals [f m]
-  (into {} (for [[k v] m] [k (f k v)])))
+  (into {} (for [[k v] m] [k (f v)])))
 
 (defn rotate [coll]
   (cons (last coll) (drop-last coll)))
@@ -68,5 +68,10 @@
 
 (defn round [n]
   (Math/round (double n)))
+
+(defn mapify [f coll]
+  (->> (map f coll)
+       (map vector coll)
+       (into {})))
 
 (spec/check-asserts true)

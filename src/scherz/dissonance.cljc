@@ -23,23 +23,23 @@
                                {:numerator (* numerator scalar)}))
         base-ratios [[1 1] [25 24] [9 8] [6 5] [5 4] [4 3]
                      [45 32] [3 2] [8 5] [5 3] [9 5] [15 8]]
-        add-octaves (fn [[index ratio]]
+        add-octave (fn [[index ratio]]
                       (->> (/ index 12) floor (exp 2) (multiply-ratio ratio)))]
     (vec (->> (cycle base-ratios)
               (take (* (count base-ratios) 8))
               (map (fn [[n d]] {:numerator n :denominator d}))
               (map-indexed vector)
-              (map add-octaves)))))
+              (map add-octave)))))
 
-(defn- chord-ratios
+(defn notes->ratios
   "Converts a set of notes into frequency ratios above the lowest note.
-  (chord->ratios '(0 4 7)) -> [1/1 5/4 3/2]"
+  (notes->ratios '(0 4 7)) -> [1/1 5/4 3/2]"
   [notes]
   (map (fn [note]
          (freq-ratios (- note (first notes))))
        notes))
 
-(defn- chord-terms [ratios]
+(defn ratios->terms [ratios]
   (let [g (gcd-ratios ratios)
         div #?(:clj quot :cljs (fn [n d] (Math/floor (/ n d))))
         simplify (fn [ratio]
@@ -58,11 +58,10 @@
   "Measures dissonance of a set of midi notes based on Euler's Gradus Suavitatis."
   [notes]
   (->> notes
-       chord-ratios
-       chord-terms
+       notes->ratios
+       ratios->terms
        (reduce lcm)
        prime-factors
        frequencies
        (map (fn [[prime exponent]] (* exponent (dec prime))))
        (reduce +)))
-

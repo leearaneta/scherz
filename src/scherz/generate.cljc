@@ -46,28 +46,30 @@
                     (-> (u/round (u/avg (:cof-extent prev-chord)))
                         (arcf target-color) ; add or subtract target color
                         ; isolate amount of brightness we need from new tonic
-                        (- (b/scale-brightness scale))
+                        (- (b/scale->brightness scale))
                         b/brightness->pitch ; get new tonic
                         (c/chord-set scale)))]
     (mapcat apply-arc arcfs)))
 
-(def scale-dissonance
+(def scale->dissonance-extent
   "Mapping of scales to tuples of (minimum-dissonance, maximum-dissonance).
    These tuples are used to normalize dissonance between multiple scales."
-  (->> s/scales
-       (map (comp u/extent (partial map :dissonance) c/c-chords))
-       (map vector s/scales)
-       (into {})))
+  (u/mapify (comp u/extent
+                  (partial map :dissonance)
+                  c/scale->c-chords)
+            s/scales))
 
 (defn normalize-dissonance
   "Returns a function that outputs a normalized dissonance value from 0 to 1 
    given a base dissonance value and a set of scales."
   [scales]
-  (let [[min-vals max-vals] (apply map vector (map scale-dissonance scales)) 
+  (let [[min-vals max-vals] (apply map vector
+                                   (map scale->dissonance-extent scales)) 
         min-dissonance (apply min min-vals)
         max-dissonance (apply max max-vals)]
     (fn [dissonance]
-      (-> dissonance (- min-dissonance) (/ (- max-dissonance min-dissonance))))))
+      (/ (- dissonance min-dissonance)
+         (- max-dissonance min-dissonance)))))
 
 (defn sort-chords [chords]
   (let [grouped (group-by :name chords)]
@@ -92,8 +94,8 @@
                                normalize-dissonance
                                (u/abs-diff dissonance)))
         score-gravity (fn [chord]
-                        (when-let [g (g/chord-gravity (:notes prev)
-                                                      (:notes chord))]
+                        (when-let [g (g/gravity (:notes prev)
+                                                (:notes chord))]
                           (max (- gravity g) 0)))]
     (->> (apply-scores chords score-color score-dissonance score-gravity)
          (u/distinct-by (comp g/sink-octave :notes))

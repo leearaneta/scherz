@@ -1,23 +1,19 @@
 (ns scherz.brightness-test
-  (:require [scherz.brightness]))
+  (:require [clojure.test :refer [deftest is]]
+            [scherz.brightness :refer [pitch->brightness brightness->pitch
+                                       circle-of-fifths pitch-scale
+                                       fifths-above fifths-between]]))
 
-(use 'clojure.test)
-(refer 'scherz.brightness)
-
-(deftest shift
-  (is (= (sharpen :Bb 3) :B##))
-  (is (= (scherz.brightness/flatten :G# 2) :Gb)))
+(deftest conversion
+  (is (= (pitch->brightness "Db") -5))
+  (is (= (brightness->pitch 6) "F#")))
 
 (deftest circle
-  (is (= (fifths-above :F# 3) :D#))
-  (is (= (fifths-above :Fb -3) :Abb)))
+  (is (= (circle-of-fifths "Ab")
+         '("Bbb" "Fb" "Cb" "Gb" "Db" "Ab" "Eb" "Bb" "F" "C" "G" "D")))
+  (is (= (pitch-scale "B" :minor)
+         '("B" "C#" "D" "E" "F#" "G" "A"))))
 
-(deftest pitch
-  (is (= (pitch-scale :D :lydian)
-         '[:D :E :F# :G# :A :B :C#]))
-  (is (= (pitch-chord :A :dorian '(0 2 4 6) 2)
-         '(:B :D :F# :A))))
-
-(deftest color
-  (is (= (chord-color '(:C :E :G) '(:G :B :D)) 1))
-  (is (= (chord-color '(:G :B :D :F) '(:C :E :G :C)) 0)))
+(deftest distance
+  (is (= (fifths-above 3 "F") "D"))
+  (is (= (fifths-between "G" "E") '("G" "D" "A" "E"))))
