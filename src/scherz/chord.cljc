@@ -81,19 +81,22 @@
                            (map #(- % (first notes)) notes)))
              (keys chord-type->notes)))
 
-(def interval->degree
-  {1 "b2" 2 "2"
-   3 "3" 4 "3"
-   5 "4"
-   6 "b5" 7 "5"
-   8 "6" 9 "6"
-   10 "b7" 11 "7"
-   13 "b9" 14 "9"
-   15 "10" 16 "10"
-   17 "11"
-   18 "b12" 19 "12"
-   20 "13" 21 "13"
-   22 "b7" 23 "7"})
+(defn interval->degree
+  [interval]
+  (if (< 23 interval)
+    (recur (- interval 12))
+    ({1 "b2" 2 "2"
+      3 "3" 4 "3"
+      5 "4"
+      6 "b5" 7 "5"
+      8 "6" 9 "6"
+      10 "b7" 11 "7"
+      13 "b9" 14 "9"
+      15 "10" 16 "10"
+      17 "11"
+      18 "b12" 19 "12"
+      20 "13" 21 "13"
+      22 "b7" 23 "7"} interval)))
 
 (defn- add-extension
   "Given a base chord and an extension to add, appends :degree or :bass (or none)
@@ -133,15 +136,13 @@
   "Determines which chord is chosen in the event that there are multiple chords
    with the same notes in a chord set."
   [chords]
-  (let [add (fn [initial pred val]
-              (if pred (+ initial val) initial))
-        cost (fn [{:keys [bass degree type inversion]}]
-               (-> 0
-                   (add (nil? type) 100)
-                   (add (not (triadic-types (keyword type))) 8)
-                   (add (some? bass) 6)
-                   (add (not= inversion 0) 5)
-                   (add (some? degree) 4)))]
+  (let [cost (fn [{:keys [bass degree type inversion]}]
+               (cond-> 0
+                   (nil? type) (+ 100)
+                   (not (triadic-types (keyword type))) (+ 8)
+                   (some? bass) (+ 6)
+                   (not= inversion 0) (+ 5)
+                   (some? degree) (+ 4)))]
     (min-by cost chords)))
 
 (defn- any-clustered-notes?
@@ -165,9 +166,9 @@
        (some (partial <= 10))))
 
 (defn- any-minor-ninths?
-  "Returns true if any notes (excluding the bass) are a minor ninth away."
+  "Returns true if any note pairs (excluding the first two notes) are a minor ninth away."
   [notes]
-  (->> (combinations (pop (apply list notes)) 2)
+  (->> (combinations (pop (pop (apply list notes))) 2)
        (map (partial apply abs-diff))
        (some (partial = 13))))
 

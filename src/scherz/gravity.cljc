@@ -22,6 +22,11 @@
     (recur (conj (subvec pitches 1) (first pitches))
            (dec shift))))
 
+(defn- inverse-coll
+  [coll]
+  (map (partial / 1)
+       (filter (partial not= 0) coll)))
+
 (defn gravity
   "Measures, from 0 to 1, how spatially close two sets of notes are.
   More half step resolutions results in higher gravity."
@@ -29,16 +34,14 @@
   (if (= (count source-notes) (count target-notes))
     (avg (->> target-notes
               (map abs-diff source-notes)
-              (filter (partial not= 0))
-              (map (partial / 1))))
+              inverse-coll))
     (let [[four-notes five-notes] (sort-by count [source-notes target-notes])]
       (avg (->> [(conj (vec four-notes) infinity)
                  (conj (apply list four-notes) infinity)]
                 (map (partial map abs-diff five-notes))
                 (apply map vector)
                 (map (partial apply min))
-                (filter (partial not= 0))
-                (map (partial / 1)))))))
+                inverse-coll)))))
 
 (defn sink-octave
   "Brings a set of notes down to the lowest octave possible."
