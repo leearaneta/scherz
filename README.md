@@ -1,5 +1,5 @@
 # scherz
-opinionated generative music
+opinionated generative music. [https://scherz.netlify.app](https://scherz.netlify.app)
 
 ## Intro
 
